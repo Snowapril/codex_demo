@@ -60,6 +60,14 @@ jobs:
         run: |
           test -d web
 
+      - name: Fetch Dawn
+        run: |
+          ./scripts/fetch_dawn.sh
+
+      - name: Build Dawn (Web)
+        run: |
+          ./scripts/build_dawn_web.sh
+
       - name: Install Playwright Chromium
         run: |
           if [ ! -f package.json ]; then\n            npm init -y\n          fi\n          npm install --save-dev playwright\n          npx playwright install --with-deps chromium
