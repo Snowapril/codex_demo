@@ -1,5 +1,7 @@
 # Render Graph Engine
 
+![CI](https://github.com/Snowapril/codex_demo/actions/workflows/ci.yml/badge.svg?branch=main)
+
 Cross‑platform rendering engine skeleton with a render‑graph‑first API. Targets:
 
 - macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp)
