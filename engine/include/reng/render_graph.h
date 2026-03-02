@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "reng/resources.h"
+#include "reng/command_buffer.h"
 
 namespace reng {
 
@@ -50,8 +51,6 @@ struct CompileReport {
   std::vector<PassReport> passes;
   std::vector<DependencyEdge> dependencies;
 };
-
-class CommandBuffer;
 
 class BlitPassBuilder {
 public:
