@@ -85,6 +85,7 @@
 - Hash‑based cache
 - Vulkan: DXC SPIR‑V generation
 - Metal: DXC → DXIL → Metal Shader Converter → metallib
+- WebGPU (Dawn/WASM): HLSL → WGSL or SPIR‑V → WGSL via Dawn tooling (TBD per build target)
 
 ## 6) Backend Details
 - Vulkan backend
@@ -102,11 +103,25 @@
 - `RENG_ENABLE_VULKAN`
 - `RENG_ENABLE_VALIDATION`
 - `RENG_ENABLE_ML_PASS`
+- `RENG_ENABLE_WEBGPU`
+- `RENG_ENABLE_WEB_WASM`
+
+### 7.1 WebGPU (Dawn) Build Notes
+- Desktop: build Dawn as a dependency and link against native Dawn (D3D12/Metal/Vulkan).
+- Web: build Dawn in WASM mode via Emscripten; produce a `.wasm` + JS loader.
+- Provide a simple web launcher under `/web` that hosts the WASM build and requests a WebGPU device.
 
 ## 8) CI (GitHub Actions)
 - Windows: Vulkan SDK + DXC + Dawn, build + headless tests
 - macOS: Vulkan SDK + Metal Shader Converter + Dawn, Metal/Vulkan/WebGPU headless tests
 - Web (Chrome): WASM build + WebGPU smoke test
+
+### 8.1 Web CI Details
+- Install Emscripten SDK (emsdk) and activate a fixed version.
+- Build Dawn for web target; then build the engine with `RENG_ENABLE_WEBGPU` + `RENG_ENABLE_WEB_WASM`.
+- Package `/web` artifacts and run a minimal smoke test:
+  - Launch a local HTTP server.
+  - Run a headless Chrome test that requests WebGPU and renders a single frame.
 
 ## 9) Tests & Scenarios
 - RenderGraph compile test:

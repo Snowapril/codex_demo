@@ -34,6 +34,12 @@ cmake --build build --config Release
 ctest --test-dir build --output-on-failure
 ```
 
+## Web (WASM) Build (Plan)
+
+- Build Dawn for Web (Emscripten) and enable `RENG_ENABLE_WEBGPU` + `RENG_ENABLE_WEB_WASM`.
+- Produce `.wasm` + JS loader artifacts under `/web`.
+- Run a minimal WebGPU smoke test in Chrome (one frame render).
+
 ## Formatting
 
 - clang‑format is enforced via pre‑commit hook (`.githooks/pre-commit`)
