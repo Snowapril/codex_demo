@@ -1,2 +1,0 @@
-add_executable(reng_sample_triangle main.cpp)
-target_link_libraries(reng_sample_triangle PRIVATE reng_core)

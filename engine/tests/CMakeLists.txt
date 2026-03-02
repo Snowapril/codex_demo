@@ -1,3 +1,0 @@
-add_executable(reng_render_graph_tests render_graph_tests.cpp)
-target_link_libraries(reng_render_graph_tests PRIVATE reng_core)
-add_test(NAME reng_render_graph_tests COMMAND reng_render_graph_tests)
