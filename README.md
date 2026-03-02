@@ -34,6 +34,31 @@ cmake --build build --config Release
 ctest --test-dir build --output-on-failure
 ```
 
+## Local Backend Builds
+
+One‑touch build scripts are available under `scripts/`:
+
+- Build a specific backend:
+  - `./scripts/build_local.py vulkan`
+  - `./scripts/build_local.py metal`
+  - `./scripts/build_local.py webgpu`
+- Build all backends:
+  - `./scripts/build_local.py all`
+
+### WebGPU (WASM) Local Test
+
+Run a local WebGPU smoke test (Chrome required):
+
+```sh
+./scripts/test_web_local.py
+```
+
+### Local Tests
+
+```sh
+./scripts/test_local.py
+```
+
 ## Web (WASM) Build (Plan)
 
 - Build Dawn for Web (Emscripten) and enable `RENG_ENABLE_WEBGPU` + `RENG_ENABLE_WEB_WASM`.
