@@ -12,6 +12,7 @@ option(RENG_ENABLE_ML_PASS "Enable Metal ML pass" ON)
 
 add_subdirectory(engine)
 add_subdirectory(samples/triangle)
+add_subdirectory(samples/blank)
 
 enable_testing()
 add_subdirectory(engine/tests)

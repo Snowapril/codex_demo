@@ -1,0 +1,8 @@
+if(APPLE)
+  add_executable(reng_sample_blank macos_main.mm)
+  target_link_libraries(reng_sample_blank PRIVATE "-framework Cocoa" "-framework Metal" "-framework QuartzCore")
+elseif(WIN32)
+  find_package(Vulkan REQUIRED)
+  add_executable(reng_sample_blank windows_main.cpp)
+  target_link_libraries(reng_sample_blank PRIVATE Vulkan::Vulkan)
+endif()
