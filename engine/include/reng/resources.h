@@ -30,7 +30,9 @@ struct ResourceId {
   ResourceKind kind = ResourceKind::Buffer;
   std::string name;
 
-  bool operator==(const ResourceId& other) const { return value == other.value; }
+  bool operator==(const ResourceId& other) const {
+    return value == other.value;
+  }
   bool operator!=(const ResourceId& other) const { return !(*this == other); }
 };
 
@@ -40,4 +42,4 @@ struct ResourceAccess {
   TextureUsage usage = TextureUsage::Undefined;
 };
 
-} // namespace reng
+}  // namespace reng

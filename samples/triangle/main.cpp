@@ -17,22 +17,17 @@ int main() {
           {uploadBuffer, AccessType::Write, TextureUsage::Undefined},
           {texture, AccessType::Write, TextureUsage::TransferDst},
       },
-      QueueType::Transfer,
-      [](BlitPassBuilder& pass) {
+      QueueType::Transfer, [](BlitPassBuilder& pass) {
         pass.uploadBuffer("upload_buffer", 1024);
         pass.uploadTexture("color_tex", 4096);
       });
 
-  graph.AddRenderPass(
-      "Render",
-      "framebuffer_main",
-      {
-          {texture, AccessType::Read, TextureUsage::Sampled},
-      },
-      QueueType::Graphics,
-      [](RenderPassBuilder& pass) {
-        pass.draw(3, 1);
-      });
+  graph.AddRenderPass("Render", "framebuffer_main",
+                      {
+                          {texture, AccessType::Read, TextureUsage::Sampled},
+                      },
+                      QueueType::Graphics,
+                      [](RenderPassBuilder& pass) { pass.draw(3, 1); });
 
   graph.AddComputePass(
       "Compute",
@@ -40,9 +35,7 @@ int main() {
           {texture, AccessType::ReadWrite, TextureUsage::Storage},
       },
       QueueType::Compute,
-      [](ComputePassBuilder& pass) {
-        pass.dispatch(8, 8, 1);
-      });
+      [](ComputePassBuilder& pass) { pass.dispatch(8, 8, 1); });
 
   auto report = graph.Compile();
 

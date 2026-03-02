@@ -10,12 +10,12 @@ struct DeviceDesc {
 };
 
 class Device {
-public:
+ public:
   explicit Device(const DeviceDesc& desc);
   const DeviceDesc& desc() const { return _desc; }
 
-private:
+ private:
   DeviceDesc _desc;
 };
 
-} // namespace reng
+}  // namespace reng

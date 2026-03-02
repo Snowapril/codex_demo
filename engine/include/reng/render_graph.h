@@ -1,13 +1,13 @@
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
 
-#include "reng/resources.h"
 #include "reng/command_buffer.h"
+#include "reng/resources.h"
 
 namespace reng {
 
@@ -53,82 +53,82 @@ struct CompileReport {
 };
 
 class BlitPassBuilder {
-public:
+ public:
   explicit BlitPassBuilder(CommandBuffer& cmd) : _cmd(cmd) {}
   void copyTexture(const std::string& src, const std::string& dst);
   void uploadBuffer(const std::string& name, size_t bytes);
   void uploadTexture(const std::string& name, size_t bytes);
-private:
+
+ private:
   CommandBuffer& _cmd;
 };
 
 class RenderPassBuilder {
-public:
+ public:
   explicit RenderPassBuilder(CommandBuffer& cmd) : _cmd(cmd) {}
   void draw(uint32_t vertexCount, uint32_t instanceCount = 1);
-private:
+
+ private:
   CommandBuffer& _cmd;
 };
 
 class ComputePassBuilder {
-public:
+ public:
   explicit ComputePassBuilder(CommandBuffer& cmd) : _cmd(cmd) {}
   void dispatch(uint32_t x, uint32_t y, uint32_t z);
-private:
+
+ private:
   CommandBuffer& _cmd;
 };
 
 class MLPassBuilder {
-public:
+ public:
   explicit MLPassBuilder(CommandBuffer& cmd) : _cmd(cmd) {}
   void dispatch(uint32_t x, uint32_t y, uint32_t z);
-private:
+
+ private:
   CommandBuffer& _cmd;
 };
 
 class RenderGraph;
 
 class ResolvedFrame {
-public:
+ public:
   explicit ResolvedFrame(std::vector<CommandBuffer>&& buffers);
   void Execute();
-private:
+
+ private:
   std::vector<CommandBuffer> _buffers;
 };
 
 class RenderGraph {
-public:
+ public:
   void BeginFrame();
 
-  PassHandle AddBlitPass(
-      const std::string& name,
-      const std::vector<ResourceAccess>& accesses,
-      QueueType preferredQueue,
-      const std::function<void(BlitPassBuilder&)>& record);
+  PassHandle AddBlitPass(const std::string& name,
+                         const std::vector<ResourceAccess>& accesses,
+                         QueueType preferredQueue,
+                         const std::function<void(BlitPassBuilder&)>& record);
 
   PassHandle AddRenderPass(
-      const std::string& name,
-      const std::string& framebufferName,
-      const std::vector<ResourceAccess>& accesses,
-      QueueType preferredQueue,
+      const std::string& name, const std::string& framebufferName,
+      const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
       const std::function<void(RenderPassBuilder&)>& record);
 
   PassHandle AddComputePass(
-      const std::string& name,
-      const std::vector<ResourceAccess>& accesses,
+      const std::string& name, const std::vector<ResourceAccess>& accesses,
       QueueType preferredQueue,
       const std::function<void(ComputePassBuilder&)>& record);
 
-  PassHandle AddMLPass(
-      const std::string& name,
-      const std::vector<ResourceAccess>& accesses,
-      QueueType preferredQueue,
-      const std::function<void(MLPassBuilder&)>& record);
+  PassHandle AddMLPass(const std::string& name,
+                       const std::vector<ResourceAccess>& accesses,
+                       QueueType preferredQueue,
+                       const std::function<void(MLPassBuilder&)>& record);
 
   CompileReport Compile(const CompileOptions& options = {});
   ResolvedFrame Resolve();
 
-private:
+ private:
   struct PassDesc {
     PassHandle handle;
     std::string name;
@@ -142,4 +142,4 @@ private:
   CompileReport _lastReport;
 };
 
-} // namespace reng
+}  // namespace reng

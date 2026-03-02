@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 namespace reng {
@@ -32,7 +32,7 @@ struct Command {
 };
 
 class CommandBuffer {
-public:
+ public:
   void beginBlitPass();
   void endBlitPass();
   void copyTexture(const std::string& src, const std::string& dst);
@@ -53,8 +53,8 @@ public:
 
   const std::vector<Command>& commands() const { return _commands; }
 
-private:
+ private:
   std::vector<Command> _commands;
 };
 
-} // namespace reng
+}  // namespace reng

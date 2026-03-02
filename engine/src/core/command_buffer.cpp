@@ -10,7 +10,8 @@ void CommandBuffer::endBlitPass() {
   _commands.push_back({CommandType::EndBlitPass});
 }
 
-void CommandBuffer::copyTexture(const std::string& src, const std::string& dst) {
+void CommandBuffer::copyTexture(const std::string& src,
+                                const std::string& dst) {
   Command cmd{CommandType::CopyTexture};
   cmd.a = src;
   cmd.b = dst;
@@ -80,4 +81,4 @@ void CommandBuffer::dispatchML(uint32_t x, uint32_t y, uint32_t z) {
   _commands.push_back(cmd);
 }
 
-} // namespace reng
+}  // namespace reng

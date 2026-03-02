@@ -24,9 +24,10 @@ QueueType defaultQueueForPass(PassType type) {
 bool isWriteAccess(AccessType access) {
   return access == AccessType::Write || access == AccessType::ReadWrite;
 }
-}
+}  // namespace
 
-void BlitPassBuilder::copyTexture(const std::string& src, const std::string& dst) {
+void BlitPassBuilder::copyTexture(const std::string& src,
+                                  const std::string& dst) {
   _cmd.copyTexture(src, dst);
 }
 
@@ -64,8 +65,7 @@ void RenderGraph::BeginFrame() {
 }
 
 PassHandle RenderGraph::AddBlitPass(
-    const std::string& name,
-    const std::vector<ResourceAccess>& accesses,
+    const std::string& name, const std::vector<ResourceAccess>& accesses,
     QueueType preferredQueue,
     const std::function<void(BlitPassBuilder&)>& record) {
   PassHandle handle{static_cast<uint32_t>(_passes.size())};
@@ -86,10 +86,8 @@ PassHandle RenderGraph::AddBlitPass(
 }
 
 PassHandle RenderGraph::AddRenderPass(
-    const std::string& name,
-    const std::string& framebufferName,
-    const std::vector<ResourceAccess>& accesses,
-    QueueType preferredQueue,
+    const std::string& name, const std::string& framebufferName,
+    const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
     const std::function<void(RenderPassBuilder&)>& record) {
   PassHandle handle{static_cast<uint32_t>(_passes.size())};
   PassDesc desc;
@@ -109,8 +107,7 @@ PassHandle RenderGraph::AddRenderPass(
 }
 
 PassHandle RenderGraph::AddComputePass(
-    const std::string& name,
-    const std::vector<ResourceAccess>& accesses,
+    const std::string& name, const std::vector<ResourceAccess>& accesses,
     QueueType preferredQueue,
     const std::function<void(ComputePassBuilder&)>& record) {
   PassHandle handle{static_cast<uint32_t>(_passes.size())};
@@ -131,8 +128,7 @@ PassHandle RenderGraph::AddComputePass(
 }
 
 PassHandle RenderGraph::AddMLPass(
-    const std::string& name,
-    const std::vector<ResourceAccess>& accesses,
+    const std::string& name, const std::vector<ResourceAccess>& accesses,
     QueueType preferredQueue,
     const std::function<void(MLPassBuilder&)>& record) {
   PassHandle handle{static_cast<uint32_t>(_passes.size())};
@@ -159,7 +155,8 @@ CompileReport RenderGraph::Compile(const CompileOptions& options) {
   std::unordered_map<uint32_t, PassHandle> lastWriter;
   std::unordered_map<uint32_t, std::vector<PassHandle>> lastReaders;
 
-  auto addDependency = [&](PassHandle from, PassHandle to, const std::string& reason, bool autoSynced) {
+  auto addDependency = [&](PassHandle from, PassHandle to,
+                           const std::string& reason, bool autoSynced) {
     report.dependencies.push_back({from, to, reason, autoSynced});
   };
 
@@ -169,7 +166,8 @@ CompileReport RenderGraph::Compile(const CompileOptions& options) {
     pr.name = pass.name;
     pr.type = pass.type;
     pr.assignedQueue = pass.preferredQueue;
-    if (pr.assignedQueue == QueueType::Graphics && pass.type != PassType::Render) {
+    if (pr.assignedQueue == QueueType::Graphics &&
+        pass.type != PassType::Render) {
       pr.assignedQueue = defaultQueueForPass(pass.type);
     }
 
@@ -181,7 +179,8 @@ CompileReport RenderGraph::Compile(const CompileOptions& options) {
       if (lastWriter.count(key)) {
         PassHandle from = lastWriter[key];
         if (from.index != pass.handle.index) {
-          addDependency(from, pass.handle, "Write-after-read/write hazard", options.enableAutoSync);
+          addDependency(from, pass.handle, "Write-after-read/write hazard",
+                        options.enableAutoSync);
           hasDependency = true;
         }
       }
@@ -189,7 +188,8 @@ CompileReport RenderGraph::Compile(const CompileOptions& options) {
       if (write) {
         for (const auto& reader : lastReaders[key]) {
           if (reader.index != pass.handle.index) {
-            addDependency(reader, pass.handle, "Read-after-write hazard", options.enableAutoSync);
+            addDependency(reader, pass.handle, "Read-after-write hazard",
+                          options.enableAutoSync);
             hasDependency = true;
           }
         }
@@ -221,4 +221,4 @@ ResolvedFrame RenderGraph::Resolve() {
   return ResolvedFrame(std::move(buffers));
 }
 
-} // namespace reng
+}  // namespace reng

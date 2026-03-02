@@ -4,4 +4,4 @@ namespace reng {
 
 Device::Device(const DeviceDesc& desc) : _desc(desc) {}
 
-} // namespace reng
+}  // namespace reng
