@@ -4,7 +4,7 @@
 - C++20 core + Objective‑C++ Metal backend.
 - macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp), iOS: Metal4 only, Windows: Vulkan only.
 - HLSL runtime compile via DXC: SPIR‑V for Vulkan, DXIL → Metal Shader Converter → metallib for Metal.
-- Render Graph flow: **Build → Compile → Resolve → Execute**. Command buffers are created/recorded/executed from the graph.
+- RenderGraph flow: **Build → Compile → Resolve → Execute**. Command buffers are created/recorded/executed from the graph.
 - Resource tracking and dependency analysis determine queue compatibility and required sync (auto‑inserted).
 - CI runs validation layers and headless smoke tests on Windows/macOS.
 
@@ -18,7 +18,7 @@
 - `/cmake`
 - `/.github/workflows`
 
-## 2) Render Graph‑First API
+## 2) RenderGraph‑First API
 
 ### 2.1 Lifecycle
 1. **Build:** Register all passes required for the frame
@@ -57,18 +57,18 @@
 
 ## 3) Public API (MVP)
 
-### 3.1 Render Graph API
-- `RenderGraph::BeginFrame()`
-- `RenderGraph::AddBlitPass(...)`
-- `RenderGraph::AddRenderPass(..., framebufferName, ...)`
-- `RenderGraph::AddComputePass(...)`
-- `RenderGraph::AddMLPass(...)` (Metal only)
-- `RenderGraph::Compile(CompileOptions)`
-- `RenderGraph::Resolve(Device&) -> ResolvedFrame`
-- `ResolvedFrame::Execute()`
+### 3.1 RenderGraph API
+- `RenderGraph::beginFrame()`
+- `RenderGraph::addBlitPass(...)`
+- `RenderGraph::addRenderPass(..., framebufferName, ...)`
+- `RenderGraph::addComputePass(...)`
+- `RenderGraph::addMLPass(...)` (Metal only)
+- `RenderGraph::compile(CompileOptions)`
+- `RenderGraph::resolve(Device&) -> ResolvedFrame`
+- `ResolvedFrame::execute()`
 
 ### 3.2 Dependency Visibility
-- `RenderGraph::Compile()` returns report with:
+- `RenderGraph::compile()` returns report with:
   - Per‑pass queue assignment
   - Dependency edges between passes
   - Auto‑inserted sync list
@@ -103,7 +103,7 @@
 - macOS: Vulkan SDK + Metal Shader Converter, Metal/Vulkan headless tests
 
 ## 9) Tests & Scenarios
-- Render Graph compile test:
+- RenderGraph compile test:
   - Pass resource conflicts detected
   - Auto sync insertion logged
 - Queue scheduling test:

@@ -9,20 +9,20 @@ Cross‑platform rendering engine skeleton with a render‑graph‑first API. Ta
 ## Goals
 
 - HLSL runtime compile via DXC: SPIR‑V for Vulkan, DXIL → Metal Shader Converter → metallib for Metal
-- Render Graph flow: Build → Compile → Resolve → Execute
-- Resource tracking + dependency analysis for queue scheduling and auto‑sync insertion
+- RenderGraph flow: Build → Compile → Resolve → Execute
+- Resource tracking + dependency analysis for queue scheduling and autoSync insertion
 - Validation layers enabled in CI and local testing
 
-## Render Graph API (MVP)
+## RenderGraph API (MVP)
 
-- `RenderGraph::BeginFrame()`
-- `RenderGraph::AddBlitPass(...)`
-- `RenderGraph::AddRenderPass(..., framebufferName, ...)`
-- `RenderGraph::AddComputePass(...)`
-- `RenderGraph::AddMLPass(...)` (Metal only)
-- `RenderGraph::Compile(CompileOptions)`
-- `RenderGraph::Resolve(Device&) -> ResolvedFrame`
-- `ResolvedFrame::Execute()`
+- `RenderGraph::beginFrame()`
+- `RenderGraph::addBlitPass(...)`
+- `RenderGraph::addRenderPass(..., framebufferName, ...)`
+- `RenderGraph::addComputePass(...)`
+- `RenderGraph::addMLPass(...)` (Metal only)
+- `RenderGraph::compile(CompileOptions)`
+- `RenderGraph::resolve(Device&) -> ResolvedFrame`
+- `ResolvedFrame::execute()`
 
 ## Build
 

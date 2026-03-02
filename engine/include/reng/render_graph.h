@@ -95,7 +95,7 @@ class RenderGraph;
 class ResolvedFrame {
  public:
   explicit ResolvedFrame(std::vector<CommandBuffer>&& buffers);
-  void Execute();
+  void execute();
 
  private:
   std::vector<CommandBuffer> _buffers;
@@ -103,30 +103,30 @@ class ResolvedFrame {
 
 class RenderGraph {
  public:
-  void BeginFrame();
+  void beginFrame();
 
-  PassHandle AddBlitPass(const std::string& name,
+  PassHandle addBlitPass(const std::string& name,
                          const std::vector<ResourceAccess>& accesses,
                          QueueType preferredQueue,
                          const std::function<void(BlitPassBuilder&)>& record);
 
-  PassHandle AddRenderPass(
+  PassHandle addRenderPass(
       const std::string& name, const std::string& framebufferName,
       const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
       const std::function<void(RenderPassBuilder&)>& record);
 
-  PassHandle AddComputePass(
+  PassHandle addComputePass(
       const std::string& name, const std::vector<ResourceAccess>& accesses,
       QueueType preferredQueue,
       const std::function<void(ComputePassBuilder&)>& record);
 
-  PassHandle AddMLPass(const std::string& name,
+  PassHandle addMLPass(const std::string& name,
                        const std::vector<ResourceAccess>& accesses,
                        QueueType preferredQueue,
                        const std::function<void(MLPassBuilder&)>& record);
 
-  CompileReport Compile(const CompileOptions& options = {});
-  ResolvedFrame Resolve();
+  CompileReport compile(const CompileOptions& options = {});
+  ResolvedFrame resolve();
 
  private:
   struct PassDesc {

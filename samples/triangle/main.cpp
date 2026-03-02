@@ -6,12 +6,12 @@ int main() {
   using namespace reng;
 
   RenderGraph graph;
-  graph.BeginFrame();
+  graph.beginFrame();
 
   ResourceId uploadBuffer{1, ResourceKind::Buffer, "upload_buffer"};
   ResourceId texture{2, ResourceKind::Texture, "color_tex"};
 
-  graph.AddBlitPass(
+  graph.addBlitPass(
       "Upload",
       {
           {uploadBuffer, AccessType::Write, TextureUsage::Undefined},
@@ -22,14 +22,14 @@ int main() {
         pass.uploadTexture("color_tex", 4096);
       });
 
-  graph.AddRenderPass("Render", "framebuffer_main",
+  graph.addRenderPass("Render", "framebuffer_main",
                       {
                           {texture, AccessType::Read, TextureUsage::Sampled},
                       },
                       QueueType::Graphics,
                       [](RenderPassBuilder& pass) { pass.draw(3, 1); });
 
-  graph.AddComputePass(
+  graph.addComputePass(
       "Compute",
       {
           {texture, AccessType::ReadWrite, TextureUsage::Storage},
@@ -37,13 +37,13 @@ int main() {
       QueueType::Compute,
       [](ComputePassBuilder& pass) { pass.dispatch(8, 8, 1); });
 
-  auto report = graph.Compile();
+  auto report = graph.compile();
 
   std::cout << "Compile report: " << report.passes.size() << " passes, "
             << report.dependencies.size() << " deps\n";
 
-  auto frame = graph.Resolve();
-  frame.Execute();
+  auto frame = graph.resolve();
+  frame.execute();
 
   return 0;
 }

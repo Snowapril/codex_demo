@@ -54,17 +54,17 @@ void MLPassBuilder::dispatch(uint32_t x, uint32_t y, uint32_t z) {
 ResolvedFrame::ResolvedFrame(std::vector<CommandBuffer>&& buffers)
     : _buffers(std::move(buffers)) {}
 
-void ResolvedFrame::Execute() {
+void ResolvedFrame::execute() {
   // Placeholder: in a full implementation this would submit to platform queues.
   // We intentionally leave this as a no-op for now.
 }
 
-void RenderGraph::BeginFrame() {
+void RenderGraph::beginFrame() {
   _passes.clear();
   _lastReport = {};
 }
 
-PassHandle RenderGraph::AddBlitPass(
+PassHandle RenderGraph::addBlitPass(
     const std::string& name, const std::vector<ResourceAccess>& accesses,
     QueueType preferredQueue,
     const std::function<void(BlitPassBuilder&)>& record) {
@@ -85,7 +85,7 @@ PassHandle RenderGraph::AddBlitPass(
   return handle;
 }
 
-PassHandle RenderGraph::AddRenderPass(
+PassHandle RenderGraph::addRenderPass(
     const std::string& name, const std::string& framebufferName,
     const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
     const std::function<void(RenderPassBuilder&)>& record) {
@@ -106,7 +106,7 @@ PassHandle RenderGraph::AddRenderPass(
   return handle;
 }
 
-PassHandle RenderGraph::AddComputePass(
+PassHandle RenderGraph::addComputePass(
     const std::string& name, const std::vector<ResourceAccess>& accesses,
     QueueType preferredQueue,
     const std::function<void(ComputePassBuilder&)>& record) {
@@ -127,7 +127,7 @@ PassHandle RenderGraph::AddComputePass(
   return handle;
 }
 
-PassHandle RenderGraph::AddMLPass(
+PassHandle RenderGraph::addMLPass(
     const std::string& name, const std::vector<ResourceAccess>& accesses,
     QueueType preferredQueue,
     const std::function<void(MLPassBuilder&)>& record) {
@@ -148,7 +148,7 @@ PassHandle RenderGraph::AddMLPass(
   return handle;
 }
 
-CompileReport RenderGraph::Compile(const CompileOptions& options) {
+CompileReport RenderGraph::compile(const CompileOptions& options) {
   CompileReport report;
   report.passes.reserve(_passes.size());
 
@@ -208,7 +208,7 @@ CompileReport RenderGraph::Compile(const CompileOptions& options) {
   return report;
 }
 
-ResolvedFrame RenderGraph::Resolve() {
+ResolvedFrame RenderGraph::resolve() {
   std::vector<CommandBuffer> buffers;
   buffers.reserve(_passes.size());
   for (const auto& pass : _passes) {
