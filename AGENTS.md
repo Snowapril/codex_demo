@@ -2,7 +2,7 @@
 
 ## Summary
 - C++20 core + Objective‑C++ Metal backend.
-- macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp), iOS: Metal4 only, Windows: Vulkan only.
+- macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp) + WebGPU (Dawn), iOS: Metal4 only, Windows: Vulkan + WebGPU (Dawn).
 - HLSL runtime compile via DXC: SPIR‑V for Vulkan, DXIL → Metal Shader Converter → metallib for Metal.
 - RenderGraph flow: **Build → Compile → Resolve → Execute**. Command buffers are created/recorded/executed from the graph.
 - Resource tracking and dependency analysis determine queue compatibility and required sync (auto‑inserted).
@@ -13,6 +13,7 @@
 - `/engine/src` core (RHI, resource, render graph, scheduler)
 - `/engine/src/backends/vulkan`
 - `/engine/src/backends/metal` (Objective‑C++ `.mm`)
+- `/engine/src/backends/webgpu` (Dawn)
 - `/samples/triangle` minimal sample (platform entrypoints)
 - `/tools/shader_cache`
 - `/cmake`
@@ -89,8 +90,10 @@
   - Enable `VK_LAYER_KHRONOS_validation` in Debug/CI
 - Metal backend
   - Enable `MTL_DEBUG_LAYER=1`, `MTL_SHADER_VALIDATION=1`
+- WebGPU backend (Dawn)
+  - Use Dawn validation toggles in Debug/CI
 - ML pass
-  - Metal4 only; excluded with warning on Vulkan
+  - Metal4 only; excluded with warning on Vulkan/WebGPU
 
 ## 7) Build System (CMake)
 - `RENG_ENABLE_METAL`
@@ -99,8 +102,8 @@
 - `RENG_ENABLE_ML_PASS`
 
 ## 8) CI (GitHub Actions)
-- Windows: Vulkan SDK + DXC, build + headless tests
-- macOS: Vulkan SDK + Metal Shader Converter, Metal/Vulkan headless tests
+- Windows: Vulkan SDK + DXC + Dawn, build + headless tests
+- macOS: Vulkan SDK + Metal Shader Converter + Dawn, Metal/Vulkan/WebGPU headless tests
 
 ## 9) Tests & Scenarios
 - RenderGraph compile test:
