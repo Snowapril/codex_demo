@@ -31,3 +31,34 @@ jobs:
           MTL_DEBUG_LAYER: 1
           MTL_SHADER_VALIDATION: 1
         run: ctest --test-dir build --output-on-failure
+
+  webgpu-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+
+      - name: Prepare Web assets
+        run: |
+          test -d web
+
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y
+          npm install --save-dev playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run WebGPU smoke test
+        run: |
+          python3 -m http.server 8000 --directory web &
+          sleep 2
+          node web/smoke_test.js
