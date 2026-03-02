@@ -29,6 +29,9 @@ def main():
         k, v = line.split("=", 1)
         env[k] = v
 
+  if os.path.isdir(build_dir):
+    print(f"Removing existing build dir: {build_dir}")
+    subprocess.check_call(["rm", "-rf", build_dir])
   os.makedirs(build_dir, exist_ok=True)
 
   run([
