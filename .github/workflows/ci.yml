@@ -41,6 +41,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+
+      - name: Cache emsdk
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.emscripten_cache
+            ~/.emscripten_ports
+          key: emsdk-${{ runner.os }}-3.1.64
 
       - name: Install Emscripten SDK
         uses: mymindstorm/setup-emsdk@v14
@@ -53,9 +62,7 @@ jobs:
 
       - name: Install Playwright Chromium
         run: |
-          npm init -y
-          npm install --save-dev playwright
-          npx playwright install --with-deps chromium
+          if [ ! -f package.json ]; then\n            npm init -y\n          fi\n          npm install --save-dev playwright\n          npx playwright install --with-deps chromium
 
       - name: Run WebGPU smoke test
         run: |
