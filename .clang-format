@@ -1,0 +1,11 @@
+# Google C++ style baseline.
+BasedOnStyle: Google
+IndentWidth: 2
+ColumnLimit: 80
+AllowShortFunctionsOnASingleLine: Inline
+DerivePointerAlignment: false
+PointerAlignment: Left
+SortIncludes: true
+ObjCBlockIndentWidth: 2
+SpacesInAngles: false
+
