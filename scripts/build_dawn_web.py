@@ -41,6 +41,7 @@ def main():
       "-DCMAKE_BUILD_TYPE=Release",
       "-DDAWN_BUILD_SAMPLES=OFF",
       "-DDAWN_BUILD_TESTS=OFF",
+      "-DDAWN_FETCH_DEPENDENCIES=ON",
       "-DDAWN_ENABLE_DESKTOP_GL=OFF",
       "-DDAWN_ENABLE_OPENGLES=OFF",
       "-DDAWN_ENABLE_VULKAN=OFF",
@@ -49,6 +50,9 @@ def main():
       "-DDAWN_ENABLE_D3D12=OFF",
       "-DDAWN_ENABLE_NULL=OFF",
       "-DDAWN_ENABLE_EMSCRIPTEN=ON",
+      "-DTINT_BUILD_TESTS=OFF",
+      "-DTINT_BUILD_CMD_TOOLS=OFF",
+      "-DTINT_BUILD_IR_BINARY=OFF",
   ], env=env)
 
   run(["cmake", "--build", build_dir], env=env)
