@@ -2,7 +2,7 @@
 
 ## Summary
 - C++20 core + Objective‑C++ Metal backend.
-- macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp) + WebGPU (Dawn), iOS: Metal4 only, Windows: Vulkan + WebGPU (Dawn).
+- macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp) + WebGPU (Dawn), iOS: Metal4 only, Windows: Vulkan + WebGPU (Dawn), Web: WebGPU (Dawn) via WASM in Chrome.
 - HLSL runtime compile via DXC: SPIR‑V for Vulkan, DXIL → Metal Shader Converter → metallib for Metal.
 - RenderGraph flow: **Build → Compile → Resolve → Execute**. Command buffers are created/recorded/executed from the graph.
 - Resource tracking and dependency analysis determine queue compatibility and required sync (auto‑inserted).
@@ -14,6 +14,7 @@
 - `/engine/src/backends/vulkan`
 - `/engine/src/backends/metal` (Objective‑C++ `.mm`)
 - `/engine/src/backends/webgpu` (Dawn)
+- `/web` WASM + Chrome launcher/support
 - `/samples/triangle` minimal sample (platform entrypoints)
 - `/tools/shader_cache`
 - `/cmake`
@@ -92,6 +93,7 @@
   - Enable `MTL_DEBUG_LAYER=1`, `MTL_SHADER_VALIDATION=1`
 - WebGPU backend (Dawn)
   - Use Dawn validation toggles in Debug/CI
+  - Support WASM builds for Chrome
 - ML pass
   - Metal4 only; excluded with warning on Vulkan/WebGPU
 
@@ -104,6 +106,7 @@
 ## 8) CI (GitHub Actions)
 - Windows: Vulkan SDK + DXC + Dawn, build + headless tests
 - macOS: Vulkan SDK + Metal Shader Converter + Dawn, Metal/Vulkan/WebGPU headless tests
+- Web (Chrome): WASM build + WebGPU smoke test
 
 ## 9) Tests & Scenarios
 - RenderGraph compile test:

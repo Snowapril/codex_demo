@@ -5,11 +5,12 @@ Cross‑platform rendering engine skeleton with a render‑graph‑first API. Ta
 - macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp) + WebGPU (Dawn)
 - iOS: Metal4 only
 - Windows: Vulkan + WebGPU (Dawn)
+- Web: WebGPU (Dawn) via WASM in Chrome
 
 ## Goals
 
 - HLSL runtime compile via DXC: SPIR‑V for Vulkan, DXIL → Metal Shader Converter → metallib for Metal
-- WebGPU backend uses Google Dawn
+- WebGPU backend uses Google Dawn, including WASM builds for Chrome
 - RenderGraph flow: Build → Compile → Resolve → Execute
 - Resource tracking + dependency analysis for queue scheduling and autoSync insertion
 - Validation layers enabled in CI and local testing
