@@ -1,0 +1,72 @@
+# Build directories
+build/
+cmake-build-*/
+
+# CMake artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# Ninja
+.ninja_deps
+.ninja_log
+.ninja_log.*
+
+# ccache
+.ccache/
+
+# Object files
+*.o
+*.obj
+*.lo
+*.slo
+*.d
+*.pdb
+*.idb
+*.ilk
+
+# Libraries
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Xcode
+*.xcworkspace/
+*.xcuserdata/
+*.xcodeproj/
+*.xcuserstate
+DerivedData/
+
+# Swift Package Manager (if used)
+.swiftpm/
+.build/
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj*
+*.vcproj*
+*.filters
+*.user
+*.suo
+*.db
+*.opendb
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
