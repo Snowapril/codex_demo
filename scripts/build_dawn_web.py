@@ -34,7 +34,15 @@ def main():
     subprocess.check_call(["rm", "-rf", build_dir])
   os.makedirs(build_dir, exist_ok=True)
 
+  emcmake = "emcmake"
+  emsdk_emcmake = os.path.join(emsdk, "upstream", "emscripten", "emcmake")
+  if os.path.isfile(emsdk_emcmake):
+    emcmake = emsdk_emcmake
+
+  toolchain_path = os.path.join(emsdk, "upstream", "emscripten")
+
   run([
+      emcmake,
       "cmake",
       "-S",
       dawn_dir,
@@ -42,6 +50,7 @@ def main():
       build_dir,
       "-GNinja",
       "-DCMAKE_BUILD_TYPE=Release",
+      f"-DDAWN_EMSCRIPTEN_TOOLCHAIN={toolchain_path}",
       "-DDAWN_BUILD_SAMPLES=OFF",
       "-DDAWN_BUILD_TESTS=OFF",
       "-DDAWN_FETCH_DEPENDENCIES=ON",
@@ -54,6 +63,8 @@ def main():
       "-DDAWN_ENABLE_NULL=OFF",
       "-DDAWN_ENABLE_GLFW=OFF",
       "-DDAWN_ENABLE_X11=OFF",
+      "-DGLFW_BUILD_X11=OFF",
+      "-DGLFW_BUILD_WAYLAND=OFF",
       "-DDAWN_ENABLE_EMSCRIPTEN=ON",
       "-DTINT_BUILD_TESTS=OFF",
       "-DTINT_BUILD_CMD_TOOLS=OFF",
