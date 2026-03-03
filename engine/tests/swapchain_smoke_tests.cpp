@@ -1,3 +1,6 @@
+#include <cstdlib>
+#include <string>
+
 #include "reng/app.h"
 #include "reng/logger.h"
 
@@ -21,6 +24,13 @@ class SwapchainSmokeApp : public reng::AppCallbacks {
 
 int main() {
   using namespace reng;
+  const char* headless = std::getenv("RENG_HEADLESS");
+  if (headless && std::string(headless) == "1") {
+    RengLogger::init("logs/tests_swapchain_smoke.log");
+    RengLogger::logWarning("Headless mode enabled; skipping swapchain test");
+    RengLogger::shutdown();
+    return 0;
+  }
   RengLogger::init("logs/tests_swapchain_smoke.log");
   RengLogger::logInfo("Starting swapchain smoke test");
 
