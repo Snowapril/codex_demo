@@ -8,7 +8,10 @@ add_library(reng_core
   src/platform/app.cpp
 )
 
-target_include_directories(reng_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(reng_core
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 if(RENG_ENABLE_VULKAN)
   add_library(reng_backend_vulkan src/backends/vulkan/vulkan_backend.cpp)
@@ -32,7 +35,11 @@ if(APPLE)
     src/backends/metal/metal_swapchain.mm
     src/backends/metal/metal_utils.mm
   )
-  target_link_libraries(reng_core PRIVATE \"-framework Cocoa\" \"-framework Metal\" \"-framework QuartzCore\")
+  target_link_libraries(reng_core PUBLIC
+    "-framework Cocoa"
+    "-framework Metal"
+    "-framework QuartzCore"
+  )
   set_source_files_properties(
     src/platform/macos_app.mm
     src/backends/metal/metal_device.mm

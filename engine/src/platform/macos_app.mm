@@ -1,22 +1,24 @@
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/CAMetalDisplayLink.h>
 #import <QuartzCore/CAMetalLayer.h>
+#import <dispatch/dispatch.h>
 
 #include <memory>
 
 #include "reng/app.h"
 #include "reng/engine.h"
 #include "reng/logger.h"
-#include "engine/src/backends/metal/metal_device.h"
-#include "engine/src/backends/metal/metal_swapchain.h"
+#include "backends/metal/metal_device.h"
+#include "backends/metal/metal_swapchain.h"
 
-@interface AppDelegate : NSObject <NSApplicationDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate, CAMetalDisplayLinkDelegate>
 @end
 
 @implementation AppDelegate {
   NSWindow* _window;
   CAMetalLayer* _layer;
   CAMetalDisplayLink* _displayLink;
+  NSTimer* _fallbackTimer;
   std::unique_ptr<reng::MetalDevice> _device;
   std::unique_ptr<reng::MetalSwapchain> _swapchain;
   std::unique_ptr<reng::Engine> _engine;
@@ -64,18 +66,47 @@
       _layer, *_device, _desc.swapchain);
   _engine = std::make_unique<reng::Engine>(_desc, *_callbacks, _swapchain.get());
 
-  _displayLink = [CAMetalDisplayLink displayLinkWithMetalLayer:_layer];
-  _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
-  __weak AppDelegate* weakSelf = self;
-  _displayLink.callback = ^(CAMetalDisplayLink* link) {
-    [weakSelf tick];
-  };
-  [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
-                     forMode:NSRunLoopCommonModes];
+  if (@available(macOS 14.0, *)) {
+    _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
+    _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
+    _displayLink.delegate = self;
+    [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
+                       forMode:NSRunLoopCommonModes];
+  } else {
+    _fallbackTimer = [NSTimer
+        scheduledTimerWithTimeInterval:(1.0 / 60.0)
+                                target:self
+                              selector:@selector(tick)
+                              userInfo:nil
+                               repeats:YES];
+  }
+
+  if (_desc.maxRunSeconds > 0.0f) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                                 (int64_t)(_desc.maxRunSeconds * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+                     [[NSApplication sharedApplication] terminate:nil];
+                   });
+  }
+}
+
+- (void)metalDisplayLink:(CAMetalDisplayLink*)link
+             needsUpdate:(CAMetalDisplayLinkUpdate*)update {
+  (void)link;
+  (void)update;
+  [self tick];
 }
 
 - (void)applicationWillTerminate:(NSNotification*)notification {
   reng::RengLogger::logInfo("Shutting down macOS app");
+  if (_displayLink) {
+    [_displayLink invalidate];
+    _displayLink = nil;
+  }
+  if (_fallbackTimer) {
+    [_fallbackTimer invalidate];
+    _fallbackTimer = nil;
+  }
   reng::RengLogger::shutdown();
 }
 

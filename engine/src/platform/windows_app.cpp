@@ -7,8 +7,8 @@
 #include "reng/app.h"
 #include "reng/engine.h"
 #include "reng/logger.h"
-#include "engine/src/backends/vulkan/vulkan_device.h"
-#include "engine/src/backends/vulkan/vulkan_swapchain.h"
+#include "backends/vulkan/vulkan_device.h"
+#include "backends/vulkan/vulkan_swapchain.h"
 
 namespace {
 const uint32_t kDefaultWidth = 800;
@@ -88,6 +88,7 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
   Engine engine(desc, callbacks, &swapchain);
 
   ULONGLONG lastTick = GetTickCount64();
+  ULONGLONG startTick = lastTick;
   MSG msg{};
   while (msg.message != WM_QUIT) {
     while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -102,6 +103,12 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
     engine.tick(delta);
     if (callbacks.shouldExit()) {
       PostQuitMessage(0);
+    }
+    if (desc.maxRunSeconds > 0.0f) {
+      ULONGLONG elapsed = now - startTick;
+      if (elapsed >= static_cast<ULONGLONG>(desc.maxRunSeconds * 1000.0f)) {
+        PostQuitMessage(0);
+      }
     }
   }
 

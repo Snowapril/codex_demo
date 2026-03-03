@@ -35,6 +35,7 @@ int main() {
   desc.swapchain.height = 240;
   desc.swapchain.colorFormat = PixelFormat::Bgra8Unorm;
   desc.swapchain.presentMode = PresentMode::Vsync;
+  desc.maxRunSeconds = 2.0f;
 
   SwapchainSmokeApp app(3);
   int result = runApp(desc, app);

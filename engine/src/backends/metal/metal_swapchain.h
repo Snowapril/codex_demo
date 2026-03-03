@@ -8,7 +8,7 @@
 
 namespace reng {
 
-class MetalSwapchain : public Swapchain {
+class MetalSwapchain : public BackendSwapchain {
  public:
   MetalSwapchain(CAMetalLayer* layer, MetalDevice& device,
                  const SwapchainDesc& desc);

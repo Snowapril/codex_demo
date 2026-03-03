@@ -10,7 +10,7 @@
 
 namespace reng {
 
-class VulkanSwapchain : public Swapchain {
+class VulkanSwapchain : public BackendSwapchain {
  public:
   bool init(VulkanDevice& device, const SwapchainDesc& desc);
   void recreate(const SwapchainDesc& desc) override;

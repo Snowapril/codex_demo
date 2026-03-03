@@ -31,6 +31,7 @@ struct AppDesc {
   Backend backend = Backend::Vulkan;
   const char* title = "Blank Sample";
   SwapchainDesc swapchain;
+  float maxRunSeconds = 0.0f;
 };
 
 class AppCallbacks {
