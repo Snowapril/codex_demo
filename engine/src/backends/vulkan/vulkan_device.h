@@ -4,6 +4,10 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#if defined(__APPLE__) && !defined(VK_USE_PLATFORM_METAL_EXT)
+#define VK_USE_PLATFORM_METAL_EXT
+#endif
+
 #include <vulkan/vulkan.h>
 
 #include "reng/backend.h"
@@ -19,6 +23,7 @@ class VulkanDevice : public BackendDevice {
   VulkanDevice() = default;
 
   bool initWin32(HINSTANCE hinstance, HWND hwnd);
+  bool initMacos(void* metalLayer);
   void shutdown() override;
 
   VkInstance instance() const { return _instance; }

@@ -2,6 +2,8 @@
 
 #include "reng/logger.h"
 
+#include <string>
+
 namespace reng::vulkan {
 
 bool check(VkResult result, const char* msg) {
@@ -18,6 +20,22 @@ VkFormat toVkFormat(PixelFormat format) {
     default:
       return VK_FORMAT_B8G8R8A8_UNORM;
   }
+}
+
+std::vector<const char*> gatherDeviceExtensions(VkPhysicalDevice device) {
+  std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  uint32_t count = 0;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+  std::vector<VkExtensionProperties> props(count);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, props.data());
+  for (const auto& prop : props) {
+    if (std::string(prop.extensionName) ==
+        VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) {
+      extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+      break;
+    }
+  }
+  return extensions;
 }
 
 }  // namespace reng::vulkan

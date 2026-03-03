@@ -1,6 +1,7 @@
 #include "vulkan_device.h"
 
 #include <array>
+#include <string>
 #include <vector>
 
 #include "vulkan_utils.h"
@@ -78,12 +79,13 @@ bool VulkanDevice::initWin32(HINSTANCE hinstance, HWND hwnd) {
   queueInfo.queueCount = 1;
   queueInfo.pQueuePriorities = &priority;
 
-  const char* extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  std::vector<const char*> extensions =
+      vulkan::gatherDeviceExtensions(_physicalDevice);
   VkDeviceCreateInfo createInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
   createInfo.queueCreateInfoCount = 1;
   createInfo.pQueueCreateInfos = &queueInfo;
-  createInfo.enabledExtensionCount = 1;
-  createInfo.ppEnabledExtensionNames = extensions;
+  createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+  createInfo.ppEnabledExtensionNames = extensions.data();
 
   if (!vulkan::check(vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device),
              "vkCreateDevice failed")) {

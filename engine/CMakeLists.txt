@@ -17,12 +17,14 @@ if(RENG_ENABLE_VULKAN)
   add_library(reng_backend_vulkan src/backends/vulkan/vulkan_backend.cpp)
   target_link_libraries(reng_backend_vulkan PUBLIC reng_core)
   target_compile_definitions(reng_backend_vulkan PUBLIC RENG_ENABLE_VULKAN=1)
+  target_compile_definitions(reng_core PUBLIC RENG_ENABLE_VULKAN=1)
 endif()
 
 if(APPLE AND RENG_ENABLE_METAL)
   add_library(reng_backend_metal src/backends/metal/metal_backend.mm)
   target_link_libraries(reng_backend_metal PUBLIC reng_core)
   target_compile_definitions(reng_backend_metal PUBLIC RENG_ENABLE_METAL=1)
+  target_compile_definitions(reng_core PUBLIC RENG_ENABLE_METAL=1)
   set_source_files_properties(src/backends/metal/metal_backend.mm PROPERTIES
     LANGUAGE OBJCXX
   )
@@ -47,6 +49,14 @@ if(APPLE)
     src/backends/metal/metal_swapchain.mm
     PROPERTIES LANGUAGE OBJCXX
   )
+endif()
+
+if(APPLE AND RENG_ENABLE_VULKAN)
+  target_sources(reng_core PRIVATE
+    src/backends/vulkan/vulkan_device_macos.mm
+  )
+  find_package(Vulkan REQUIRED)
+  target_link_libraries(reng_core PRIVATE Vulkan::Vulkan)
 endif()
 
 if(WIN32)
