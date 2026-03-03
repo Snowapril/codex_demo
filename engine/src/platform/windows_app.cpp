@@ -7,8 +7,7 @@
 #include "reng/app.h"
 #include "reng/engine.h"
 #include "reng/logger.h"
-#include "backends/vulkan/vulkan_device.h"
-#include "backends/vulkan/vulkan_swapchain.h"
+#include "reng/platform.h"
 
 namespace {
 const uint32_t kDefaultWidth = 800;
@@ -72,20 +71,15 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
 
   ShowWindow(hwnd, SW_SHOW);
 
-  VulkanDevice device;
-  if (!device.initWin32(wc.hInstance, hwnd)) {
+  PlatformContext context;
+  context.platform = PlatformKind::Windows;
+  context.windows.hinstance = wc.hInstance;
+  context.windows.hwnd = hwnd;
+  auto engine = Engine::create(desc, callbacks, context);
+  if (!engine) {
     DestroyWindow(hwnd);
     return 1;
   }
-
-  VulkanSwapchain swapchain;
-  if (!swapchain.init(device, desc.swapchain)) {
-    device.shutdown();
-    DestroyWindow(hwnd);
-    return 1;
-  }
-
-  Engine engine(desc, callbacks, &swapchain);
 
   ULONGLONG lastTick = GetTickCount64();
   ULONGLONG startTick = lastTick;
@@ -100,7 +94,7 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
     float delta = static_cast<float>(now - lastTick) / 1000.0f;
     lastTick = now;
 
-    engine.tick(delta);
+    engine->tick(delta);
     if (callbacks.shouldExit()) {
       PostQuitMessage(0);
     }
@@ -112,8 +106,6 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
     }
   }
 
-  swapchain.shutdown(device.device());
-  device.shutdown();
   DestroyWindow(hwnd);
   RengLogger::logInfo("Shutting down Windows app");
   RengLogger::shutdown();

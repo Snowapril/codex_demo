@@ -8,8 +8,7 @@
 #include "reng/app.h"
 #include "reng/engine.h"
 #include "reng/logger.h"
-#include "backends/metal/metal_device.h"
-#include "backends/metal/metal_swapchain.h"
+#include "reng/platform.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, CAMetalDisplayLinkDelegate>
 @end
@@ -19,8 +18,6 @@
   CAMetalLayer* _layer;
   CAMetalDisplayLink* _displayLink;
   NSTimer* _fallbackTimer;
-  std::unique_ptr<reng::MetalDevice> _device;
-  std::unique_ptr<reng::MetalSwapchain> _swapchain;
   std::unique_ptr<reng::Engine> _engine;
   reng::AppCallbacks* _callbacks;
   reng::AppDesc _desc;
@@ -61,10 +58,16 @@
   _layer.contentsScale = NSScreen.mainScreen.backingScaleFactor;
   content.layer = _layer;
 
-  _device = std::make_unique<reng::MetalDevice>();
-  _swapchain = std::make_unique<reng::MetalSwapchain>(
-      _layer, *_device, _desc.swapchain);
-  _engine = std::make_unique<reng::Engine>(_desc, *_callbacks, _swapchain.get());
+  reng::PlatformContext context;
+  context.platform = reng::PlatformKind::MacOS;
+  context.macos.nsWindow = (__bridge void*)_window;
+  context.macos.metalLayer = (__bridge void*)_layer;
+  _engine = reng::Engine::create(_desc, *_callbacks, context);
+  if (!_engine) {
+    reng::RengLogger::logError("Failed to initialize engine");
+    [[NSApplication sharedApplication] terminate:nil];
+    return;
+  }
 
   if (@available(macOS 14.0, *)) {
     _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];

@@ -31,6 +31,7 @@ endif()
 if(APPLE)
   target_sources(reng_core PRIVATE
     src/platform/macos_app.mm
+    src/platform/backend_factory_macos.mm
     src/backends/metal/metal_device.mm
     src/backends/metal/metal_swapchain.mm
     src/backends/metal/metal_utils.mm
@@ -51,6 +52,7 @@ endif()
 if(WIN32)
   target_sources(reng_core PRIVATE
     src/platform/windows_app.cpp
+    src/platform/backend_factory_windows.cpp
     src/backends/vulkan/vulkan_device.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp
