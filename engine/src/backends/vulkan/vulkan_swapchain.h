@@ -12,6 +12,7 @@ namespace reng {
 
 class VulkanSwapchain : public BackendSwapchain {
  public:
+  VulkanSwapchain() = default;
   VulkanSwapchain(const VulkanSwapchain&) = delete;
   VulkanSwapchain& operator=(const VulkanSwapchain&) = delete;
   VulkanSwapchain(VulkanSwapchain&&) = delete;
