@@ -45,6 +45,5 @@ int main() {
   } else {
     RengLogger::logError("Swapchain smoke test failed with code {}", result);
   }
-  RengLogger::shutdown();
   return result;
 }

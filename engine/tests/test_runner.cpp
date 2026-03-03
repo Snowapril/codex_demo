@@ -27,6 +27,7 @@ int runChild(const std::filesystem::path& dir, const std::string& name) {
 
 int main(int argc, char** argv) {
   using namespace reng;
+  std::filesystem::create_directories("logs");
   RengLogger::init("logs/tests_runner.log");
   RengLogger::logInfo("Starting test runner");
 
