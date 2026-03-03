@@ -2,6 +2,8 @@
 
 #include "vulkan_utils.h"
 
+#include "reng/logger.h"
+
 namespace reng {
 
 bool VulkanSwapchain::init(VulkanDevice& device, const SwapchainDesc& desc) {
@@ -9,14 +11,14 @@ bool VulkanSwapchain::init(VulkanDevice& device, const SwapchainDesc& desc) {
   return createSwapchainResources(desc);
 }
 
-void VulkanSwapchain::recreate(const SwapchainDesc& desc) {
+bool VulkanSwapchain::recreate(const SwapchainDesc& desc) {
   if (!_device) {
-    return;
+    return false;
   }
   VkDevice device = _device->device();
   vkDeviceWaitIdle(device);
   destroySwapchainResources(device);
-  createSwapchainResources(desc);
+  return createSwapchainResources(desc);
 }
 
 void VulkanSwapchain::shutdown(VkDevice device) {
@@ -98,18 +100,33 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
   }
   VulkanDevice& device = *_device;
   VkSurfaceCapabilitiesKHR caps{};
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.physicalDevice(),
-                                            device.surface(),
-                                            &caps);
+  if (!vulkan::check(
+          vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+              device.physicalDevice(), device.surface(), &caps),
+          "vkGetPhysicalDeviceSurfaceCapabilitiesKHR failed")) {
+    return false;
+  }
 
   uint32_t formatCount = 0;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device.physicalDevice(),
-                                       device.surface(),
-                                       &formatCount, nullptr);
+  if (!vulkan::check(
+          vkGetPhysicalDeviceSurfaceFormatsKHR(device.physicalDevice(),
+                                               device.surface(),
+                                               &formatCount, nullptr),
+          "vkGetPhysicalDeviceSurfaceFormatsKHR failed")) {
+    return false;
+  }
+  if (formatCount == 0) {
+    RengLogger::logError("No Vulkan surface formats available");
+    return false;
+  }
   std::vector<VkSurfaceFormatKHR> formats(formatCount);
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device.physicalDevice(),
-                                       device.surface(),
-                                       &formatCount, formats.data());
+  if (!vulkan::check(
+          vkGetPhysicalDeviceSurfaceFormatsKHR(device.physicalDevice(),
+                                               device.surface(),
+                                               &formatCount, formats.data()),
+          "vkGetPhysicalDeviceSurfaceFormatsKHR failed")) {
+    return false;
+  }
 
   VkSurfaceFormatKHR chosen = formats[0];
   VkFormat desired = vulkan::toVkFormat(desc.colorFormat);
@@ -137,13 +154,25 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
   }
 
   uint32_t presentCount = 0;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device.physicalDevice(),
-                                            device.surface(), &presentCount,
-                                            nullptr);
+  if (!vulkan::check(
+          vkGetPhysicalDeviceSurfacePresentModesKHR(
+              device.physicalDevice(), device.surface(), &presentCount,
+              nullptr),
+          "vkGetPhysicalDeviceSurfacePresentModesKHR failed")) {
+    return false;
+  }
+  if (presentCount == 0) {
+    RengLogger::logError("No Vulkan present modes available");
+    return false;
+  }
   std::vector<VkPresentModeKHR> presentModes(presentCount);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device.physicalDevice(),
-                                            device.surface(), &presentCount,
-                                            presentModes.data());
+  if (!vulkan::check(
+          vkGetPhysicalDeviceSurfacePresentModesKHR(
+              device.physicalDevice(), device.surface(), &presentCount,
+              presentModes.data()),
+          "vkGetPhysicalDeviceSurfacePresentModesKHR failed")) {
+    return false;
+  }
 
   VkPresentModeKHR selectedPresent = VK_PRESENT_MODE_FIFO_KHR;
   for (auto mode : presentModes) {

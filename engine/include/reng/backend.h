@@ -13,7 +13,7 @@ class BackendDevice {
 class BackendSwapchain {
  public:
   virtual ~BackendSwapchain() = default;
-  virtual void recreate(const SwapchainDesc& desc) = 0;
+  virtual bool recreate(const SwapchainDesc& desc) = 0;
   virtual void present() = 0;
 };
 

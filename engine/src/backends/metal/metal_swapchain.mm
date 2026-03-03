@@ -12,9 +12,10 @@ MetalSwapchain::MetalSwapchain(CAMetalLayer* layer, MetalDevice& device,
   configureLayer(_desc);
 }
 
-void MetalSwapchain::recreate(const SwapchainDesc& desc) {
+bool MetalSwapchain::recreate(const SwapchainDesc& desc) {
   _desc = desc;
   configureLayer(_desc);
+  return true;
 }
 
 void MetalSwapchain::configureLayer(const SwapchainDesc& desc) {

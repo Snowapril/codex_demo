@@ -12,8 +12,13 @@ namespace reng {
 
 class VulkanSwapchain : public BackendSwapchain {
  public:
+  VulkanSwapchain(const VulkanSwapchain&) = delete;
+  VulkanSwapchain& operator=(const VulkanSwapchain&) = delete;
+  VulkanSwapchain(VulkanSwapchain&&) = delete;
+  VulkanSwapchain& operator=(VulkanSwapchain&&) = delete;
+
   bool init(VulkanDevice& device, const SwapchainDesc& desc);
-  void recreate(const SwapchainDesc& desc) override;
+  bool recreate(const SwapchainDesc& desc) override;
   void shutdown(VkDevice device);
   void present() override;
 

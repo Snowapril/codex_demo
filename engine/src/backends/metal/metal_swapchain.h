@@ -12,7 +12,7 @@ class MetalSwapchain : public BackendSwapchain {
  public:
   MetalSwapchain(CAMetalLayer* layer, MetalDevice& device,
                  const SwapchainDesc& desc);
-  void recreate(const SwapchainDesc& desc) override;
+  bool recreate(const SwapchainDesc& desc) override;
   void present() override;
 
  private:
