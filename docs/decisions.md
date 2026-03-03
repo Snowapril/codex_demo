@@ -47,6 +47,12 @@
 - CI runs tests after build on Windows/macOS.
 - Validation layers enabled in CI and local testing.
 
+## Pre‑Push Verification
+- Before pushing:
+  - macOS: run tests for both Metal and Vulkan backends.
+  - Windows: run tests for the Vulkan backend.
+  - Confirm build and tests pass.
+
 ## Naming
 - Methods/functions: `camelCase`.
 - File names keep existing style (do not rename to camelCase).

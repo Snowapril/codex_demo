@@ -136,3 +136,9 @@
 - Methods/functions: `camelCase`.
 - File names keep current style (no camelCase rename).
 - Member naming: `_{name}` for private/protected, `{name}` for public.
+
+## 14) Pre‑Push Verification
+- Before pushing:
+  - On macOS: run tests for both Metal and Vulkan backends.
+  - On Windows: run tests for the Vulkan backend.
+  - Confirm both build and tests pass.
