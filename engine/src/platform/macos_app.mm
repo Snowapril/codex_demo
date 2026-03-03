@@ -133,9 +133,16 @@
 namespace reng {
 
 int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
-  if (desc.backend != Backend::Metal) {
+  if (desc.backend != Backend::Metal && desc.backend != Backend::Vulkan) {
+    RengLogger::logError("Requested backend not supported on macOS");
     return 1;
   }
+#if !defined(RENG_ENABLE_VULKAN)
+  if (desc.backend == Backend::Vulkan) {
+    RengLogger::logError("Vulkan backend is disabled in this build");
+    return 1;
+  }
+#endif
   @autoreleasepool {
     NSApplication* app = [NSApplication sharedApplication];
     AppDelegate* delegate = [[AppDelegate alloc] initWithDesc:desc
