@@ -31,11 +31,17 @@ int main(int argc, char** argv) {
   RengLogger::logInfo("Starting test runner");
 
   std::filesystem::path dir = exeDir(argc > 0 ? argv[0] : nullptr);
-  const char* headless = std::getenv("RENG_HEADLESS");
-  const bool isHeadless = headless && std::string(headless) == "1";
+  bool isHeadless = false;
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i] ? argv[i] : "";
+    if (arg == "--headless") {
+      isHeadless = true;
+    }
+  }
   std::vector<std::string> tests = {"reng_render_graph_tests"};
   if (isHeadless) {
-    RengLogger::logWarning("Headless mode enabled; skipping swapchain test");
+    RengLogger::logWarning(
+        "Headless mode enabled; skipping swapchain test");
   } else {
     tests.push_back("reng_swapchain_smoke_tests");
   }

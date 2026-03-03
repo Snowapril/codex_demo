@@ -11,6 +11,7 @@ option(RENG_ENABLE_VALIDATION "Enable validation layers" ON)
 option(RENG_ENABLE_ML_PASS "Enable Metal ML pass" ON)
 option(RENG_BUILD_SAMPLES "Build samples" ON)
 option(RENG_BUILD_TESTS "Build tests" ON)
+option(RENG_HEADLESS_TESTS "Run tests without swapchain" OFF)
 
 add_subdirectory(engine)
 if(RENG_BUILD_SAMPLES)
