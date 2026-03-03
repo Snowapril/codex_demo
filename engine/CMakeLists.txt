@@ -3,6 +3,8 @@ add_library(reng_core
   src/core/resources.cpp
   src/core/command_buffer.cpp
   src/core/device.cpp
+  src/core/engine.cpp
+  src/core/logger.cpp
   src/platform/app.cpp
 )
 
@@ -24,15 +26,28 @@ if(APPLE AND RENG_ENABLE_METAL)
 endif()
 
 if(APPLE)
-  target_sources(reng_core PRIVATE src/platform/macos_app.mm)
+  target_sources(reng_core PRIVATE
+    src/platform/macos_app.mm
+    src/backends/metal/metal_device.mm
+    src/backends/metal/metal_swapchain.mm
+    src/backends/metal/metal_utils.mm
+  )
   target_link_libraries(reng_core PRIVATE \"-framework Cocoa\" \"-framework Metal\" \"-framework QuartzCore\")
-  set_source_files_properties(src/platform/macos_app.mm PROPERTIES
-    LANGUAGE OBJCXX
+  set_source_files_properties(
+    src/platform/macos_app.mm
+    src/backends/metal/metal_device.mm
+    src/backends/metal/metal_swapchain.mm
+    PROPERTIES LANGUAGE OBJCXX
   )
 endif()
 
 if(WIN32)
-  target_sources(reng_core PRIVATE src/platform/windows_app.cpp)
+  target_sources(reng_core PRIVATE
+    src/platform/windows_app.cpp
+    src/backends/vulkan/vulkan_device.cpp
+    src/backends/vulkan/vulkan_swapchain.cpp
+    src/backends/vulkan/vulkan_utils.cpp
+  )
   find_package(Vulkan REQUIRED)
   target_link_libraries(reng_core PRIVATE Vulkan::Vulkan)
 endif()

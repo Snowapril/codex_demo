@@ -1,4 +1,5 @@
 #include "reng/app.h"
+#include "reng/logger.h"
 
 class BlankApp : public reng::AppCallbacks {
  public:
@@ -20,6 +21,8 @@ class BlankApp : public reng::AppCallbacks {
 };
 
 int main() {
+  reng::RengLogger::init("logs/blank.log");
+  reng::RengLogger::logInfo("Launching blank sample");
   reng::AppDesc desc;
 #if defined(__APPLE__)
   desc.backend = reng::Backend::Metal;

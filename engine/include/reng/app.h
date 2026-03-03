@@ -15,10 +15,16 @@ enum class PixelFormat : uint8_t {
   Bgra8Unorm,
 };
 
+enum class PresentMode : uint8_t {
+  Vsync,
+  Immediate,
+};
+
 struct SwapchainDesc {
   uint32_t width = 800;
   uint32_t height = 600;
   PixelFormat colorFormat = PixelFormat::Bgra8Unorm;
+  PresentMode presentMode = PresentMode::Vsync;
 };
 
 struct AppDesc {
@@ -34,6 +40,7 @@ class AppCallbacks {
   virtual void onUpdateFrame(float deltaSeconds) {}
   virtual void onUpdateRender(RenderGraph& graph) { (void)graph; }
   virtual void onRender(RenderGraph& graph) { (void)graph; }
+  virtual bool shouldExit() const { return false; }
 };
 
 int runApp(const AppDesc& desc, AppCallbacks& callbacks);

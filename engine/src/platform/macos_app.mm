@@ -1,53 +1,14 @@
 #import <Cocoa/Cocoa.h>
-#import <Metal/Metal.h>
 #import <QuartzCore/CAMetalDisplayLink.h>
 #import <QuartzCore/CAMetalLayer.h>
 
+#include <memory>
+
 #include "reng/app.h"
-
-namespace {
-class MetalPresenter {
- public:
-  MetalPresenter(CAMetalLayer* layer, reng::PixelFormat format)
-      : _layer(layer) {
-    _device = MTLCreateSystemDefaultDevice();
-    _queue = [_device newCommandQueue];
-    _layer.device = _device;
-    _layer.pixelFormat = format == reng::PixelFormat::Bgra8Unorm
-                             ? MTLPixelFormatBGRA8Unorm
-                             : MTLPixelFormatBGRA8Unorm;
-    _layer.framebufferOnly = YES;
-  }
-
-  void present() {
-    @autoreleasepool {
-      id<CAMetalDrawable> drawable = [_layer nextDrawable];
-      if (!drawable) {
-        return;
-      }
-      MTLRenderPassDescriptor* pass =
-          [MTLRenderPassDescriptor renderPassDescriptor];
-      pass.colorAttachments[0].texture = drawable.texture;
-      pass.colorAttachments[0].loadAction = MTLLoadActionClear;
-      pass.colorAttachments[0].storeAction = MTLStoreActionStore;
-      pass.colorAttachments[0].clearColor =
-          MTLClearColorMake(0.05, 0.05, 0.08, 1.0);
-
-      id<MTLCommandBuffer> cmd = [_queue commandBuffer];
-      id<MTLRenderCommandEncoder> encoder =
-          [cmd renderCommandEncoderWithDescriptor:pass];
-      [encoder endEncoding];
-      [cmd presentDrawable:drawable];
-      [cmd commit];
-    }
-  }
-
- private:
-  id<MTLDevice> _device = nil;
-  id<MTLCommandQueue> _queue = nil;
-  CAMetalLayer* _layer = nil;
-};
-}  // namespace
+#include "reng/engine.h"
+#include "reng/logger.h"
+#include "engine/src/backends/metal/metal_device.h"
+#include "engine/src/backends/metal/metal_swapchain.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate>
 @end
@@ -56,9 +17,10 @@ class MetalPresenter {
   NSWindow* _window;
   CAMetalLayer* _layer;
   CAMetalDisplayLink* _displayLink;
-  MetalPresenter* _presenter;
+  std::unique_ptr<reng::MetalDevice> _device;
+  std::unique_ptr<reng::MetalSwapchain> _swapchain;
+  std::unique_ptr<reng::Engine> _engine;
   reng::AppCallbacks* _callbacks;
-  reng::RenderGraph _graph;
   reng::AppDesc _desc;
   CFTimeInterval _lastTime;
 }
@@ -75,6 +37,7 @@ class MetalPresenter {
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
+  reng::RengLogger::logInfo("Starting macOS app");
   NSRect frame =
       NSMakeRect(100, 100, _desc.swapchain.width, _desc.swapchain.height);
   _window = [[NSWindow alloc]
@@ -96,7 +59,10 @@ class MetalPresenter {
   _layer.contentsScale = NSScreen.mainScreen.backingScaleFactor;
   content.layer = _layer;
 
-  _presenter = new MetalPresenter(_layer, _desc.swapchain.colorFormat);
+  _device = std::make_unique<reng::MetalDevice>();
+  _swapchain = std::make_unique<reng::MetalSwapchain>(
+      _layer, *_device, _desc.swapchain);
+  _engine = std::make_unique<reng::Engine>(_desc, *_callbacks, _swapchain.get());
 
   _displayLink = [CAMetalDisplayLink displayLinkWithMetalLayer:_layer];
   _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
@@ -108,20 +74,20 @@ class MetalPresenter {
                      forMode:NSRunLoopCommonModes];
 }
 
+- (void)applicationWillTerminate:(NSNotification*)notification {
+  reng::RengLogger::logInfo("Shutting down macOS app");
+  reng::RengLogger::shutdown();
+}
+
 - (void)tick {
   CFTimeInterval now = CACurrentMediaTime();
   float delta = (float)(now - _lastTime);
   _lastTime = now;
 
-  _callbacks->onInput();
-  _callbacks->onUpdateFrame(delta);
-  _graph.beginFrame();
-  _callbacks->onUpdateRender(_graph);
-  _callbacks->onRender(_graph);
-  _graph.compile();
-  _graph.resolve().execute();
-
-  _presenter->present();
+  _engine->tick(delta);
+  if (_callbacks->shouldExit()) {
+    [[NSApplication sharedApplication] terminate:nil];
+  }
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)sender {
