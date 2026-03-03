@@ -4,6 +4,10 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 #if defined(__APPLE__) && !defined(VK_USE_PLATFORM_METAL_EXT)
 #define VK_USE_PLATFORM_METAL_EXT
 #endif
@@ -12,17 +16,14 @@
 
 #include "reng/backend.h"
 
-#if defined(_WIN32)
-#include <windows.h>
-#endif
 
 namespace reng {
 
 class VulkanDevice : public BackendDevice {
  public:
-  VulkanDevice() = default;
+  explicit VulkanDevice(const char* appName = nullptr) : _appName(appName) {}
 
-  bool initWin32(HINSTANCE hinstance, HWND hwnd);
+  bool initWin32(void* hinstance, void* hwnd);
   bool initMacos(void* metalLayer);
   void shutdown() override;
 
@@ -34,6 +35,7 @@ class VulkanDevice : public BackendDevice {
   uint32_t graphicsQueueFamily() const { return _graphicsQueueFamily; }
 
  private:
+  const char* _appName = nullptr;
   VkInstance _instance = VK_NULL_HANDLE;
   VkSurfaceKHR _surface = VK_NULL_HANDLE;
   VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;

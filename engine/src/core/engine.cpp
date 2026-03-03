@@ -1,6 +1,6 @@
 #include "reng/engine.h"
 
-#include "engine/src/platform/backend_factory.h"
+#include "platform/backend_factory.h"
 #include "reng/logger.h"
 
 namespace reng {

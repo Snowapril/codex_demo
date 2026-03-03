@@ -1,6 +1,6 @@
 #import <QuartzCore/CAMetalLayer.h>
 
-#include "engine/src/platform/backend_factory.h"
+#include "platform/backend_factory.h"
 #include "reng/logger.h"
 
 #include "backends/metal/metal_device.h"
@@ -43,7 +43,7 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       RengLogger::logError("Missing CAMetalLayer for Vulkan backend");
       return bundle;
     }
-    auto device = std::make_unique<VulkanDevice>();
+    auto device = std::make_unique<VulkanDevice>(desc.title);
     if (!device->initMacos((__bridge void*)layer)) {
       RengLogger::logError("Failed to initialize Vulkan device");
       return bundle;

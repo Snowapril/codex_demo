@@ -1,4 +1,4 @@
-#include "engine/src/platform/backend_factory.h"
+#include "platform/backend_factory.h"
 
 #include "reng/logger.h"
 
@@ -26,7 +26,7 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
     return bundle;
   }
 
-  auto device = std::make_unique<VulkanDevice>();
+  auto device = std::make_unique<VulkanDevice>(desc.title);
   if (!device->initWin32(hinstance, hwnd)) {
     RengLogger::logError("Failed to initialize Vulkan device");
     return bundle;

@@ -8,6 +8,8 @@
 
 #include "vulkan_utils.h"
 
+#include "reng/logger.h"
+
 namespace reng {
 
 namespace {
@@ -34,13 +36,6 @@ std::vector<const char*> gatherInstanceExtensions() {
     extensions.push_back(name);
   }
 
-  for (const auto& prop : props) {
-    if (std::string(prop.extensionName) == VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) {
-      extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-      break;
-    }
-  }
-
   return extensions;
 }
 }  // namespace
@@ -52,7 +47,7 @@ bool VulkanDevice::initMacos(void* metalLayer) {
   }
 
   VkApplicationInfo appInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-  appInfo.pApplicationName = "Blank Vulkan Sample";
+  appInfo.pApplicationName = _appName ? _appName : "reng";
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.pEngineName = "reng";
   appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
@@ -68,17 +63,13 @@ bool VulkanDevice::initMacos(void* metalLayer) {
   createInfo.pApplicationInfo = &appInfo;
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
-  for (auto name : extensions) {
-    if (std::string(name) == VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) {
-      createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-      break;
-    }
-  }
-
   if (!vulkan::check(vkCreateInstance(&createInfo, nullptr, &_instance),
                      "vkCreateInstance failed")) {
     return false;
   }
+
+  RengLogger::logInfo(
+      "macOS Vulkan instance created without portability enumeration; expecting KosmicKrisp");
 
   VkMetalSurfaceCreateInfoEXT surfaceInfo{
       VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT};
@@ -157,6 +148,22 @@ bool VulkanDevice::initMacos(void* metalLayer) {
 
   vkGetDeviceQueue(_device, _graphicsQueueFamily, 0, &_graphicsQueue);
   return true;
+}
+
+void VulkanDevice::shutdown() {
+  if (_device != VK_NULL_HANDLE) {
+    vkDeviceWaitIdle(_device);
+    vkDestroyDevice(_device, nullptr);
+    _device = VK_NULL_HANDLE;
+  }
+  if (_surface != VK_NULL_HANDLE && _instance != VK_NULL_HANDLE) {
+    vkDestroySurfaceKHR(_instance, _surface, nullptr);
+    _surface = VK_NULL_HANDLE;
+  }
+  if (_instance != VK_NULL_HANDLE) {
+    vkDestroyInstance(_instance, nullptr);
+    _instance = VK_NULL_HANDLE;
+  }
 }
 
 }  // namespace reng

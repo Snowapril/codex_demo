@@ -54,6 +54,8 @@ endif()
 if(APPLE AND RENG_ENABLE_VULKAN)
   target_sources(reng_core PRIVATE
     src/backends/vulkan/vulkan_device_macos.mm
+    src/backends/vulkan/vulkan_swapchain.cpp
+    src/backends/vulkan/vulkan_utils.cpp
   )
   find_package(Vulkan REQUIRED)
   target_link_libraries(reng_core PRIVATE Vulkan::Vulkan)

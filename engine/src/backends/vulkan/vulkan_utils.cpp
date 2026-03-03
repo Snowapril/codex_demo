@@ -4,11 +4,16 @@
 
 #include <string>
 
+#ifndef VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
+#define VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME "VK_KHR_portability_subset"
+#endif
+
 namespace reng::vulkan {
 
 bool check(VkResult result, const char* msg) {
   if (result != VK_SUCCESS) {
-    RengLogger::logError("{} (VkResult={})", msg, result);
+    RengLogger::logError("{} (VkResult={})", msg,
+                         static_cast<int>(result));
     return false;
   }
   return true;
