@@ -3,6 +3,7 @@ add_library(reng_core
   src/core/resources.cpp
   src/core/command_buffer.cpp
   src/core/device.cpp
+  src/platform/app.cpp
 )
 
 target_include_directories(reng_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -22,3 +23,16 @@ if(APPLE AND RENG_ENABLE_METAL)
   )
 endif()
 
+if(APPLE)
+  target_sources(reng_core PRIVATE src/platform/macos_app.mm)
+  target_link_libraries(reng_core PRIVATE \"-framework Cocoa\" \"-framework Metal\" \"-framework QuartzCore\")
+  set_source_files_properties(src/platform/macos_app.mm PROPERTIES
+    LANGUAGE OBJCXX
+  )
+endif()
+
+if(WIN32)
+  target_sources(reng_core PRIVATE src/platform/windows_app.cpp)
+  find_package(Vulkan REQUIRED)
+  target_link_libraries(reng_core PRIVATE Vulkan::Vulkan)
+endif()

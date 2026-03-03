@@ -7,9 +7,11 @@
 #include <iostream>
 #include <vector>
 
+#include "reng/app.h"
+
 namespace {
-const uint32_t kWidth = 800;
-const uint32_t kHeight = 600;
+const uint32_t kDefaultWidth = 800;
+const uint32_t kDefaultHeight = 600;
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
   switch (msg) {
@@ -139,7 +141,7 @@ bool createDevice(VulkanState& state) {
   return true;
 }
 
-bool createSwapchain(VulkanState& state) {
+bool createSwapchain(VulkanState& state, uint32_t width, uint32_t height) {
   VkSurfaceCapabilitiesKHR caps{};
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(state.physicalDevice, state.surface,
                                             &caps);
@@ -163,7 +165,7 @@ bool createSwapchain(VulkanState& state) {
   state.swapchainFormat = chosenFormat.format;
   state.swapchainExtent = caps.currentExtent.width != UINT32_MAX
                               ? caps.currentExtent
-                              : VkExtent2D{kWidth, kHeight};
+                              : VkExtent2D{width, height};
 
   uint32_t imageCount = caps.minImageCount + 1;
   if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount) {
@@ -368,17 +370,28 @@ void cleanup(VulkanState& state) {
 
 }  // namespace
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
+namespace reng {
+
+int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
+  if (desc.backend != Backend::Vulkan) {
+    return 1;
+  }
+  const uint32_t width =
+      desc.swapchain.width ? desc.swapchain.width : kDefaultWidth;
+  const uint32_t height =
+      desc.swapchain.height ? desc.swapchain.height : kDefaultHeight;
+
   const wchar_t kClassName[] = L"BlankVulkanWindow";
   WNDCLASS wc{};
   wc.lpfnWndProc = WindowProc;
-  wc.hInstance = hInstance;
+  wc.hInstance = GetModuleHandle(nullptr);
   wc.lpszClassName = kClassName;
   RegisterClass(&wc);
 
-  HWND hwnd = CreateWindowEx(
-      0, kClassName, L"Blank Vulkan Sample", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
-      CW_USEDEFAULT, kWidth, kHeight, nullptr, nullptr, hInstance, nullptr);
+  HWND hwnd = CreateWindowEx(0, kClassName, L"Blank Vulkan Sample",
+                             WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+                             static_cast<int>(width), static_cast<int>(height),
+                             nullptr, nullptr, wc.hInstance, nullptr);
   if (!hwnd) {
     return 1;
   }
@@ -386,9 +399,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   ShowWindow(hwnd, SW_SHOW);
 
   VulkanState state;
-  if (!createInstance(state) || !createSurface(state, hInstance, hwnd) ||
+  if (!createInstance(state) || !createSurface(state, wc.hInstance, hwnd) ||
       !pickPhysicalDevice(state) || !findQueueFamily(state) ||
-      !createDevice(state) || !createSwapchain(state) ||
+      !createDevice(state) || !createSwapchain(state, width, height) ||
       !createRenderPass(state) || !createFramebuffers(state) ||
       !createCommandPool(state) || !createCommandBuffers(state) ||
       !createSyncObjects(state)) {
@@ -396,13 +409,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     return 1;
   }
 
+  RenderGraph graph;
+  ULONGLONG lastTick = GetTickCount64();
   MSG msg{};
   while (msg.message != WM_QUIT) {
-    if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
-      continue;
     }
+
+    ULONGLONG now = GetTickCount64();
+    float delta = static_cast<float>(now - lastTick) / 1000.0f;
+    lastTick = now;
+
+    callbacks.onInput();
+    callbacks.onUpdateFrame(delta);
+    graph.beginFrame();
+    callbacks.onUpdateRender(graph);
+    callbacks.onRender(graph);
+    graph.compile();
+    graph.resolve().execute();
 
     vkWaitForFences(state.device, 1, &state.inFlight, VK_TRUE, UINT64_MAX);
     vkResetFences(state.device, 1, &state.inFlight);
@@ -440,3 +466,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   DestroyWindow(hwnd);
   return 0;
 }
+
+}  // namespace reng
