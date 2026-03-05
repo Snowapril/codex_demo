@@ -27,6 +27,12 @@ jobs:
           unzip -q "${RUNNER_TEMP}/vulkan_sdk.zip" -d "${SDK_DIR}"
           INSTALLER=$(find "${SDK_DIR}" -path "*InstallVulkan*.app/Contents/MacOS/InstallVulkan*" -type f | head -n 1)
           if [ -z "${INSTALLER}" ]; then
+            ALT_INSTALLER=$(find "${SDK_DIR}" -path "*.app/Contents/MacOS/*" -type f | head -n 1)
+            if [ -n "${ALT_INSTALLER}" ]; then
+              INSTALLER="${ALT_INSTALLER}"
+            fi
+          fi
+          if [ -z "${INSTALLER}" ]; then
             DMG=$(find "${SDK_DIR}" -name "*.dmg" -type f | head -n 1)
             if [ -n "${DMG}" ]; then
               MOUNT_DIR=$(mktemp -d)
