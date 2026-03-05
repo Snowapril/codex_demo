@@ -26,8 +26,8 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
     return bundle;
   }
 
-  auto device = std::make_unique<VulkanDevice>(desc.title);
-  if (!device->initWin32(hinstance, hwnd)) {
+  auto device = std::make_unique<VulkanDevice>(desc.title, desc.device);
+  if (!device->initDevice(hinstance, hwnd)) {
     RengLogger::logError("Failed to initialize Vulkan device");
     return bundle;
   }

@@ -1,6 +1,5 @@
 #include "vulkan_device.h"
 
-#if defined(_WIN32)
 #include <array>
 #include <string>
 #include <vector>
@@ -8,13 +7,56 @@
 #include "reng/logger.h"
 #include "vulkan_utils.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
+#if defined(__APPLE__)
+#include <vulkan/vulkan_core.h>
+#endif
+
 namespace reng {
-bool VulkanDevice::initWin32(void* hinstance, void* hwnd) {
-  HINSTANCE hinst = static_cast<HINSTANCE>(hinstance);
-  HWND window = static_cast<HWND>(hwnd);
-  if (!hinst || !window) {
-    return false;
+
+namespace {
+
+#if defined(_WIN32)
+std::vector<const char*> gatherInstanceExtensions() {
+  std::array<const char*, 2> extensions = {
+      VK_KHR_SURFACE_EXTENSION_NAME,
+      VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+  return std::vector<const char*>(extensions.begin(), extensions.end());
+}
+#elif defined(__APPLE__)
+std::vector<const char*> gatherInstanceExtensions() {
+  std::vector<const char*> required = {VK_KHR_SURFACE_EXTENSION_NAME,
+                                       VK_EXT_METAL_SURFACE_EXTENSION_NAME};
+  uint32_t count = 0;
+  vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+  std::vector<VkExtensionProperties> props(count);
+  vkEnumerateInstanceExtensionProperties(nullptr, &count, props.data());
+
+  std::vector<const char*> extensions;
+  for (const auto& name : required) {
+    bool found = false;
+    for (const auto& prop : props) {
+      if (name == std::string(prop.extensionName)) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return {};
+    }
+    extensions.push_back(name);
   }
+
+  return extensions;
+}
+#endif
+
+}  // namespace
+
+bool VulkanDevice::initDevice(void* param1, void* param2) {
   VkApplicationInfo appInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
   appInfo.pApplicationName = _appName ? _appName : "reng";
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -22,31 +64,78 @@ bool VulkanDevice::initWin32(void* hinstance, void* hwnd) {
   appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
   appInfo.apiVersion = VK_API_VERSION_1_2;
 
-  std::array<const char*, 2> instanceExtensions = {
-      VK_KHR_SURFACE_EXTENSION_NAME,
-      VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+  std::vector<const char*> extensions = gatherInstanceExtensions();
+  if (extensions.empty()) {
+    RengLogger::logError("Required Vulkan instance extensions not available");
+    return false;
+  }
+  std::vector<const char*> validationLayers;
+  if (_desc.enableValidation) {
+    validationLayers = vulkan::gatherValidationLayers();
+  }
 
   VkInstanceCreateInfo createInfo{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
   createInfo.pApplicationInfo = &appInfo;
   createInfo.enabledExtensionCount =
-      static_cast<uint32_t>(instanceExtensions.size());
-  createInfo.ppEnabledExtensionNames = instanceExtensions.data();
+      static_cast<uint32_t>(extensions.size());
+  createInfo.ppEnabledExtensionNames = extensions.data();
+  createInfo.enabledLayerCount =
+      static_cast<uint32_t>(validationLayers.size());
+  createInfo.ppEnabledLayerNames = validationLayers.data();
 
   if (!vulkan::check(vkCreateInstance(&createInfo, nullptr, &_instance),
-             "vkCreateInstance failed")) {
+                     "vkCreateInstance failed")) {
+    return false;
+  }
+
+#if defined(_WIN32)
+  HINSTANCE hinstance = static_cast<HINSTANCE>(param1);
+  HWND hwnd = static_cast<HWND>(param2);
+  if (!hinstance || !hwnd) {
     return false;
   }
 
   VkWin32SurfaceCreateInfoKHR surfaceInfo{
       VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-  surfaceInfo.hinstance = hinst;
-  surfaceInfo.hwnd = window;
-  if (!vulkan::check(vkCreateWin32SurfaceKHR(_instance, &surfaceInfo, nullptr, &_surface),
-             "vkCreateWin32SurfaceKHR failed")) {
+  surfaceInfo.hinstance = hinstance;
+  surfaceInfo.hwnd = hwnd;
+  if (!vulkan::check(vkCreateWin32SurfaceKHR(_instance, &surfaceInfo, nullptr,
+                                             &_surface),
+                     "vkCreateWin32SurfaceKHR failed")) {
     shutdown();
     return false;
   }
+#elif defined(__APPLE__)
+  void* metalLayer = param1;
+  if (!metalLayer) {
+    shutdown();
+    return false;
+  }
+  RengLogger::logInfo(
+      "macOS Vulkan instance created without portability enumeration; expecting KosmicKrisp");
 
+  VkMetalSurfaceCreateInfoEXT surfaceInfo{
+      VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT};
+  surfaceInfo.pLayer = metalLayer;
+
+  auto createMetalSurface =
+      reinterpret_cast<PFN_vkCreateMetalSurfaceEXT>(
+          vkGetInstanceProcAddr(_instance, "vkCreateMetalSurfaceEXT"));
+  if (!createMetalSurface) {
+    shutdown();
+    return false;
+  }
+  if (!vulkan::check(
+          createMetalSurface(_instance, &surfaceInfo, nullptr, &_surface),
+          "vkCreateMetalSurfaceEXT failed")) {
+    shutdown();
+    return false;
+  }
+#endif
+  return initializeDevice();
+}
+
+bool VulkanDevice::initializeDevice() {
   uint32_t count = 0;
   vkEnumeratePhysicalDevices(_instance, &count, nullptr);
   if (count == 0) {
@@ -59,7 +148,8 @@ bool VulkanDevice::initWin32(void* hinstance, void* hwnd) {
   _physicalDevice = devices[0];
 
   uint32_t queueCount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueCount, nullptr);
+  vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueCount,
+                                           nullptr);
   std::vector<VkQueueFamilyProperties> props(queueCount);
   vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueCount,
                                            props.data());
@@ -96,8 +186,9 @@ bool VulkanDevice::initWin32(void* hinstance, void* hwnd) {
       static_cast<uint32_t>(deviceExtensions.size());
   deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-  if (!vulkan::check(vkCreateDevice(_physicalDevice, &deviceInfo, nullptr, &_device),
-             "vkCreateDevice failed")) {
+  if (!vulkan::check(vkCreateDevice(_physicalDevice, &deviceInfo, nullptr,
+                                    &_device),
+                     "vkCreateDevice failed")) {
     shutdown();
     return false;
   }
@@ -123,4 +214,3 @@ void VulkanDevice::shutdown() {
 }
 
 }  // namespace reng
-#endif

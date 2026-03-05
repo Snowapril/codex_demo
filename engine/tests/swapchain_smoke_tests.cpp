@@ -36,6 +36,9 @@ int main() {
   desc.swapchain.colorFormat = PixelFormat::Bgra8Unorm;
   desc.swapchain.presentMode = PresentMode::Vsync;
   desc.maxRunSeconds = 2.0f;
+#if defined(RENG_ENABLE_VALIDATION)
+  desc.device.enableValidation = true;
+#endif
 
   SwapchainSmokeApp app(3);
   int result = runApp(desc, app);

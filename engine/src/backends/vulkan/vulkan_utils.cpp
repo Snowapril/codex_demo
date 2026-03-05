@@ -43,4 +43,24 @@ std::vector<const char*> gatherDeviceExtensions(VkPhysicalDevice device) {
   return extensions;
 }
 
+std::vector<const char*> gatherValidationLayers() {
+  std::vector<const char*> layers;
+  uint32_t count = 0;
+  vkEnumerateInstanceLayerProperties(&count, nullptr);
+  std::vector<VkLayerProperties> props(count);
+  vkEnumerateInstanceLayerProperties(&count, props.data());
+
+  const char* requestedLayer = "VK_LAYER_KHRONOS_validation";
+  for (const auto& prop : props) {
+    if (std::string(prop.layerName) == requestedLayer) {
+      layers.push_back(requestedLayer);
+      RengLogger::logInfo("Validation layer enabled: {}",
+                          requestedLayer);
+      return layers;
+    }
+  }
+  RengLogger::logWarning("Requested validation layer not available");
+  return layers;
+}
+
 }  // namespace reng::vulkan

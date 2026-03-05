@@ -15,16 +15,18 @@
 #include <vulkan/vulkan.h>
 
 #include "reng/backend.h"
+#include "reng/device.h"
 
 
 namespace reng {
 
 class VulkanDevice : public BackendDevice {
  public:
-  explicit VulkanDevice(const char* appName = nullptr) : _appName(appName) {}
+  explicit VulkanDevice(const char* appName = nullptr,
+                        const DeviceDesc& desc = DeviceDesc())
+      : _appName(appName), _desc(desc) {}
 
-  bool initWin32(void* hinstance, void* hwnd);
-  bool initMacos(void* metalLayer);
+  bool initDevice(void* param1, void* param2 = nullptr);
   void shutdown() override;
 
   VkInstance instance() const { return _instance; }
@@ -35,7 +37,10 @@ class VulkanDevice : public BackendDevice {
   uint32_t graphicsQueueFamily() const { return _graphicsQueueFamily; }
 
  private:
+  bool initializeDevice();
+
   const char* _appName = nullptr;
+  DeviceDesc _desc;
   VkInstance _instance = VK_NULL_HANDLE;
   VkSurfaceKHR _surface = VK_NULL_HANDLE;
   VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;

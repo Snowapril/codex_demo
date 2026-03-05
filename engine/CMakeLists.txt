@@ -20,6 +20,10 @@ if(RENG_ENABLE_VULKAN)
   target_compile_definitions(reng_core PUBLIC RENG_ENABLE_VULKAN=1)
 endif()
 
+if(RENG_ENABLE_VALIDATION)
+  target_compile_definitions(reng_core PUBLIC RENG_ENABLE_VALIDATION=1)
+endif()
+
 if(APPLE AND RENG_ENABLE_METAL)
   add_library(reng_backend_metal src/backends/metal/metal_backend.mm)
   target_link_libraries(reng_backend_metal PUBLIC reng_core)
@@ -53,7 +57,7 @@ endif()
 
 if(APPLE AND RENG_ENABLE_VULKAN)
   target_sources(reng_core PRIVATE
-    src/backends/vulkan/vulkan_device_macos.mm
+    src/backends/vulkan/vulkan_device.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp
   )

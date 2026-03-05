@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "reng/device.h"
 #include "reng/render_graph.h"
 
 namespace reng {
@@ -29,8 +30,9 @@ struct SwapchainDesc {
 
 struct AppDesc {
   Backend backend = Backend::Vulkan;
-  const char* title = "Blank Sample";
+  const char* title = "Reng engine";
   SwapchainDesc swapchain;
+  DeviceDesc device;
   float maxRunSeconds = 0.0f;
 };
 

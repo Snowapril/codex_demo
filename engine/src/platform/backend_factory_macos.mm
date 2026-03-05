@@ -43,8 +43,8 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       RengLogger::logError("Missing CAMetalLayer for Vulkan backend");
       return bundle;
     }
-    auto device = std::make_unique<VulkanDevice>(desc.title);
-    if (!device->initMacos((__bridge void*)layer)) {
+    auto device = std::make_unique<VulkanDevice>(desc.title, desc.device);
+    if (!device->initDevice((__bridge void*)layer)) {
       RengLogger::logError("Failed to initialize Vulkan device");
       return bundle;
     }
