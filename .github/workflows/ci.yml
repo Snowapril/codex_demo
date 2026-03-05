@@ -75,6 +75,27 @@ jobs:
           echo "DYLD_LIBRARY_PATH=${SDK_ROOT}/lib" >> "${GITHUB_ENV}"
           echo "VK_LAYER_PATH=${SDK_ROOT}/share/vulkan/explicit_layer.d" >> "${GITHUB_ENV}"
 
+      - name: Install Vulkan SDK (Windows)
+        if: runner.os == 'Windows'
+        env:
+          VULKAN_SDK_VERSION: 1.4.341.1
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdkUrl = "https://sdk.lunarg.com/sdk/download/$env:VULKAN_SDK_VERSION/windows/vulkan_sdk.exe"
+          $installer = "$env:RUNNER_TEMP\\vulkan_sdk.exe"
+          Invoke-WebRequest -Uri $sdkUrl -OutFile $installer
+          & $installer --accept-licenses --default-answer --confirm-command install
+          $sdkRoot = "C:\\VulkanSDK\\$env:VULKAN_SDK_VERSION"
+          if (-not (Test-Path $sdkRoot)) {
+            $sdkRoot = (Get-ChildItem -Path "C:\\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
+          }
+          if (-not (Test-Path $sdkRoot)) {
+            throw "Vulkan SDK not found after installation."
+          }
+          "VULKAN_SDK=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          "VK_LAYER_PATH=$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Configure
         run: cmake -S . -B build -DRENG_ENABLE_VALIDATION=ON -DRENG_BUILD_TESTS=ON -DRENG_HEADLESS_TESTS=ON
 
