@@ -51,6 +51,10 @@
 ## Vulkan SDK Minimum
 - Windows/macOS minimum Vulkan SDK: 1.4.341.1
 
+## Vulkan Specification
+- Vulkan backend code follows the latest Vulkan specification:
+  - `https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html`
+
 ## Pre‑Push Verification
 - Before pushing:
   - macOS: run tests for both Metal and Vulkan backends.
