@@ -42,11 +42,19 @@ jobs:
           if [ -z "${INSTALLER}" ]; then
             SDK_BIN=$(find "${SDK_DIR}" -path "*/bin/vulkaninfo" -type f | head -n 1)
             if [ -z "${SDK_BIN}" ]; then
-              echo "InstallVulkan binary not found in SDK bundle"
-              exit 1
+              SDK_LIB=$(find "${SDK_DIR}" -path "*/lib/libvulkan.dylib" -type f | head -n 1)
+              if [ -z "${SDK_LIB}" ]; then
+                echo "InstallVulkan binary not found in SDK bundle"
+                echo "SDK contents:"
+                find "${SDK_DIR}" -maxdepth 3 -print
+                exit 1
+              fi
+              SDK_ROOT=$(dirname "$(dirname "${SDK_LIB}")")
+              echo "Using pre-unpacked Vulkan SDK at ${SDK_ROOT}"
+            else
+              SDK_ROOT=$(dirname "$(dirname "${SDK_BIN}")")
+              echo "Using pre-unpacked Vulkan SDK at ${SDK_ROOT}"
             fi
-            SDK_ROOT=$(dirname "$(dirname "${SDK_BIN}")")
-            echo "Using pre-unpacked Vulkan SDK at ${SDK_ROOT}"
           else
             "${INSTALLER}" --root "${SDK_ROOT}" --accept-licenses --default-answer --confirm-command install copy_only=1
             if [ -n "${MOUNT_DIR:-}" ]; then
