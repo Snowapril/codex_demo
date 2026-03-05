@@ -46,6 +46,7 @@
   - `RENG_HEADLESS_TESTS`
 - CI runs tests after build on Windows/macOS.
 - Validation layers enabled in CI and local testing.
+- CI uses Vulkan SDK 1.4.341.1 on macOS.
 
 ## Pre‑Push Verification
 - Before pushing:

@@ -103,7 +103,7 @@
 
 ## 8) CI (GitHub Actions)
 - Windows: Vulkan SDK + DXC, build + headless tests
-- macOS: Vulkan SDK + Metal Shader Converter, Metal/Vulkan headless tests
+- macOS: Vulkan SDK 1.4.341.1 + Metal Shader Converter, Metal/Vulkan headless tests
 
 ## 9) Tests & Scenarios
 - RenderGraph compile test:
