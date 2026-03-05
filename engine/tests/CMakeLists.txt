@@ -1,3 +1,14 @@
 add_executable(reng_render_graph_tests render_graph_tests.cpp)
 target_link_libraries(reng_render_graph_tests PRIVATE reng_core)
-add_test(NAME reng_render_graph_tests COMMAND reng_render_graph_tests)
+
+add_executable(reng_swapchain_smoke_tests swapchain_smoke_tests.cpp)
+target_link_libraries(reng_swapchain_smoke_tests PRIVATE reng_core)
+
+add_executable(reng_test_runner test_runner.cpp)
+target_link_libraries(reng_test_runner PRIVATE reng_core)
+
+if(RENG_HEADLESS_TESTS)
+  add_test(NAME reng_test_runner COMMAND reng_test_runner --headless)
+else()
+  add_test(NAME reng_test_runner COMMAND reng_test_runner)
+endif()

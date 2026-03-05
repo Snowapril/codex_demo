@@ -13,8 +13,91 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Vulkan SDK (macOS)
+        if: runner.os == 'macOS'
+        env:
+          VULKAN_SDK_VERSION: 1.4.341.1
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${RUNNER_TEMP}/VulkanSDK/${VULKAN_SDK_VERSION}"
+          SDK_DIR="${RUNNER_TEMP}/vulkan_sdk"
+          ZIP_URL="https://sdk.lunarg.com/sdk/download/${VULKAN_SDK_VERSION}/mac/vulkansdk-macos-${VULKAN_SDK_VERSION}.zip"
+          curl -fL "${ZIP_URL}" -o "${RUNNER_TEMP}/vulkan_sdk.zip"
+          mkdir -p "${SDK_DIR}"
+          unzip -q "${RUNNER_TEMP}/vulkan_sdk.zip" -d "${SDK_DIR}"
+          INSTALLER=$(find "${SDK_DIR}" -path "*InstallVulkan*.app/Contents/MacOS/InstallVulkan*" -type f | head -n 1)
+          if [ -z "${INSTALLER}" ]; then
+            ALT_INSTALLER=$(find "${SDK_DIR}" -path "*.app/Contents/MacOS/*" -type f | head -n 1)
+            if [ -n "${ALT_INSTALLER}" ]; then
+              INSTALLER="${ALT_INSTALLER}"
+            fi
+          fi
+          if [ -z "${INSTALLER}" ]; then
+            DMG=$(find "${SDK_DIR}" -name "*.dmg" -type f | head -n 1)
+            if [ -n "${DMG}" ]; then
+              MOUNT_DIR=$(mktemp -d)
+              hdiutil attach "${DMG}" -mountpoint "${MOUNT_DIR}" -nobrowse -quiet
+              INSTALLER=$(find "${MOUNT_DIR}" -path "*InstallVulkan*.app/Contents/MacOS/InstallVulkan*" -type f | head -n 1)
+              if [ -z "${INSTALLER}" ]; then
+                hdiutil detach "${MOUNT_DIR}" -quiet
+                echo "InstallVulkan binary not found in mounted dmg"
+                exit 1
+              fi
+            fi
+          fi
+          if [ -z "${INSTALLER}" ]; then
+            SDK_BIN=$(find "${SDK_DIR}" -path "*/bin/vulkaninfo" -type f | head -n 1)
+            if [ -z "${SDK_BIN}" ]; then
+              SDK_LIB=$(find "${SDK_DIR}" -path "*/lib/libvulkan.dylib" -type f | head -n 1)
+              if [ -z "${SDK_LIB}" ]; then
+                echo "InstallVulkan binary not found in SDK bundle"
+                echo "SDK contents:"
+                find "${SDK_DIR}" -maxdepth 3 -print
+                exit 1
+              fi
+              SDK_ROOT=$(dirname "$(dirname "${SDK_LIB}")")
+              echo "Using pre-unpacked Vulkan SDK at ${SDK_ROOT}"
+            else
+              SDK_ROOT=$(dirname "$(dirname "${SDK_BIN}")")
+              echo "Using pre-unpacked Vulkan SDK at ${SDK_ROOT}"
+            fi
+          else
+            "${INSTALLER}" --root "${SDK_ROOT}" --accept-licenses --default-answer --confirm-command install copy_only=1
+            if [ -n "${MOUNT_DIR:-}" ]; then
+              hdiutil detach "${MOUNT_DIR}" -quiet
+            fi
+          fi
+          if [ -d "${SDK_ROOT}/macOS" ]; then
+            SDK_ROOT="${SDK_ROOT}/macOS"
+          fi
+          echo "VULKAN_SDK=${SDK_ROOT}" >> "${GITHUB_ENV}"
+          echo "${SDK_ROOT}/bin" >> "${GITHUB_PATH}"
+          echo "DYLD_LIBRARY_PATH=${SDK_ROOT}/lib" >> "${GITHUB_ENV}"
+          echo "VK_LAYER_PATH=${SDK_ROOT}/share/vulkan/explicit_layer.d" >> "${GITHUB_ENV}"
+
+      - name: Install Vulkan SDK (Windows)
+        if: runner.os == 'Windows'
+        env:
+          VULKAN_SDK_VERSION: 1.4.341.1
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdkUrl = "https://sdk.lunarg.com/sdk/download/$env:VULKAN_SDK_VERSION/windows/vulkan_sdk.exe"
+          $installer = "$env:RUNNER_TEMP\\vulkan_sdk.exe"
+          Invoke-WebRequest -Uri $sdkUrl -OutFile $installer
+          & $installer --accept-licenses --default-answer --confirm-command install
+          $sdkRoot = "C:\\VulkanSDK\\$env:VULKAN_SDK_VERSION"
+          if (-not (Test-Path $sdkRoot)) {
+            $sdkRoot = (Get-ChildItem -Path "C:\\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
+          }
+          if (-not (Test-Path $sdkRoot)) {
+            throw "Vulkan SDK not found after installation."
+          }
+          "VULKAN_SDK=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          "VK_LAYER_PATH=$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Configure
-        run: cmake -S . -B build -DRENG_ENABLE_VALIDATION=ON
+        run: cmake -S . -B build -DRENG_ENABLE_VALIDATION=ON -DRENG_BUILD_TESTS=ON -DRENG_HEADLESS_TESTS=ON
 
       - name: Build
         run: cmake --build build --config Release

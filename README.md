@@ -29,7 +29,7 @@ Cross‑platform rendering engine skeleton with a render‑graph‑first API. Ta
 ## Build
 
 ```sh
-cmake -S . -B build -DRENG_ENABLE_VALIDATION=ON
+cmake -S . -B build -DRENG_ENABLE_VALIDATION=ON -DRENG_BUILD_SAMPLES=ON -DRENG_BUILD_TESTS=ON
 cmake --build build --config Release
 ctest --test-dir build --output-on-failure
 ```

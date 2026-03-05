@@ -97,19 +97,27 @@
 - `RENG_ENABLE_VULKAN`
 - `RENG_ENABLE_VALIDATION`
 - `RENG_ENABLE_ML_PASS`
+- `RENG_BUILD_SAMPLES` (default ON)
+- `RENG_BUILD_TESTS` (default ON)
+- `RENG_HEADLESS_TESTS` (ctest uses `--headless` when ON)
 
 ## 8) CI (GitHub Actions)
 - Windows: Vulkan SDK + DXC, build + headless tests
-- macOS: Vulkan SDK + Metal Shader Converter, Metal/Vulkan headless tests
+- macOS: Vulkan SDK 1.4.341.1 + Metal Shader Converter, Metal/Vulkan headless tests
+
+## Vulkan SDK Minimum
+- Windows/macOS minimum Vulkan SDK: 1.4.341.1
+
+## Vulkan Specification
+- Vulkan backend code follows the latest Vulkan specification:
+  - `https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html`
 
 ## 9) Tests & Scenarios
 - RenderGraph compile test:
   - Pass resource conflicts detected
   - Auto sync insertion logged
-- Queue scheduling test:
-  - Transfer pass separated from Graphics pass where possible
-- ML pass test (macOS only):
-  - ML pass enabled only on Metal
+- Swapchain smoke test:
+  - Blank screen for a few frames (skipped in headless)
 
 ## 10) Assumptions & Defaults
 - Minimum OS: macOS 26 / iOS 26 / Windows 11
@@ -118,3 +126,26 @@
 - RenderGraph compile/resolve required each frame
 - Auto‑sync insertion enabled
 - macOS/iOS frame pacing uses CAMetalDisplayLink
+
+## 11) Engine & Platform Rules
+- App code must not include backend headers; Engine selects backend by `AppDesc.backend`.
+- Backend creation is done by platform factories; app only provides `PlatformContext`.
+- Swapchain creation is backend‑owned; app provides width/height/pixel format and present mode.
+- macOS Vulkan uses KosmicKrisp: do not enable portability enumeration.
+- Runloop is centralized in Engine; callbacks: input → update frame → update render → render.
+
+## 12) Logging
+- Use `RengLogger` (no `std::cerr`).
+- Log format: `[yyyy-mm-dd-hh-mm-ss] [LogLevel] message`.
+- Logger initialized by samples; shutdown on app exit.
+
+## 13) Naming
+- Methods/functions: `camelCase`.
+- File names keep current style (no camelCase rename).
+- Member naming: `_{name}` for private/protected, `{name}` for public.
+
+## 14) Pre‑Push Verification
+- Before pushing:
+  - On macOS: run tests for both Metal and Vulkan backends.
+  - On Windows: run tests for the Vulkan backend.
+  - Confirm both build and tests pass.
