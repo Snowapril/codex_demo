@@ -22,13 +22,15 @@ bool VulkanDevice::initWin32(void* hinstance, void* hwnd) {
   appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
   appInfo.apiVersion = VK_API_VERSION_1_2;
 
-  std::array<const char*, 2> extensions = {VK_KHR_SURFACE_EXTENSION_NAME,
-                                           VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+  std::array<const char*, 2> instanceExtensions = {
+      VK_KHR_SURFACE_EXTENSION_NAME,
+      VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
 
   VkInstanceCreateInfo createInfo{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
   createInfo.pApplicationInfo = &appInfo;
-  createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-  createInfo.ppEnabledExtensionNames = extensions.data();
+  createInfo.enabledExtensionCount =
+      static_cast<uint32_t>(instanceExtensions.size());
+  createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
   if (!vulkan::check(vkCreateInstance(&createInfo, nullptr, &_instance),
              "vkCreateInstance failed")) {
@@ -85,13 +87,14 @@ bool VulkanDevice::initWin32(void* hinstance, void* hwnd) {
   queueInfo.queueCount = 1;
   queueInfo.pQueuePriorities = &priority;
 
-  std::vector<const char*> extensions =
+  std::vector<const char*> deviceExtensions =
       vulkan::gatherDeviceExtensions(_physicalDevice);
   VkDeviceCreateInfo deviceInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
   deviceInfo.queueCreateInfoCount = 1;
   deviceInfo.pQueueCreateInfos = &queueInfo;
-  deviceInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-  deviceInfo.ppEnabledExtensionNames = extensions.data();
+  deviceInfo.enabledExtensionCount =
+      static_cast<uint32_t>(deviceExtensions.size());
+  deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
   if (!vulkan::check(vkCreateDevice(_physicalDevice, &deviceInfo, nullptr, &_device),
              "vkCreateDevice failed")) {
