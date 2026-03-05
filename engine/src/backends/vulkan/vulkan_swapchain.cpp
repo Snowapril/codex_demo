@@ -1,5 +1,7 @@
 #include "vulkan_swapchain.h"
 
+#include <algorithm>
+
 #include "vulkan_utils.h"
 
 #include "reng/logger.h"
@@ -139,9 +141,15 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
   }
 
   _format = chosen.format;
-  _extent = caps.currentExtent.width != UINT32_MAX
-                ? caps.currentExtent
-                : VkExtent2D{desc.width, desc.height};
+  if (caps.currentExtent.width != UINT32_MAX) {
+    _extent = caps.currentExtent;
+  } else {
+    _extent = VkExtent2D{
+        std::clamp(desc.width, caps.minImageExtent.width,
+                   caps.maxImageExtent.width),
+        std::clamp(desc.height, caps.minImageExtent.height,
+                   caps.maxImageExtent.height)};
+  }
 
   uint32_t imageCount = caps.minImageCount + 1;
   if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount) {
@@ -196,16 +204,36 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
   info.presentMode = selectedPresent;
   info.clipped = VK_TRUE;
 
+  auto fail = [&]() {
+    destroySwapchainResources(device.device());
+    return false;
+  };
+
   if (!vulkan::check(
           vkCreateSwapchainKHR(device.device(), &info, nullptr, &_swapchain),
           "vkCreateSwapchainKHR failed")) {
-    return false;
+    return fail();
   }
 
-  vkGetSwapchainImagesKHR(device.device(), _swapchain, &imageCount, nullptr);
+  if (!vulkan::check(
+          vkGetSwapchainImagesKHR(device.device(), _swapchain, &imageCount,
+                                  nullptr),
+          "vkGetSwapchainImagesKHR(count) failed")) {
+    RengLogger::logError("Failed to query Vulkan swapchain image count");
+    return fail();
+  }
+  if (imageCount == 0) {
+    RengLogger::logError("vkGetSwapchainImagesKHR returned zero images");
+    return fail();
+  }
   _images.resize(imageCount);
-  vkGetSwapchainImagesKHR(device.device(), _swapchain, &imageCount,
-                          _images.data());
+  if (!vulkan::check(
+          vkGetSwapchainImagesKHR(device.device(), _swapchain, &imageCount,
+                                  _images.data()),
+          "vkGetSwapchainImagesKHR(images) failed")) {
+    RengLogger::logError("Failed to fetch Vulkan swapchain images");
+    return fail();
+  }
 
   _imageViews.resize(_images.size());
   for (size_t i = 0; i < _images.size(); ++i) {
@@ -222,7 +250,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
     if (!vulkan::check(vkCreateImageView(device.device(), &viewInfo, nullptr,
                                          &_imageViews[i]),
                        "vkCreateImageView failed")) {
-      return false;
+      return fail();
     }
   }
 
@@ -256,7 +284,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
           vkCreateRenderPass(device.device(), &renderPassInfo, nullptr,
                              &_renderPass),
           "vkCreateRenderPass failed")) {
-    return false;
+    return fail();
   }
 
   _framebuffers.resize(_imageViews.size());
@@ -274,7 +302,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
     if (!vulkan::check(vkCreateFramebuffer(device.device(), &fbInfo, nullptr,
                                            &_framebuffers[i]),
                        "vkCreateFramebuffer failed")) {
-      return false;
+      return fail();
     }
   }
 
@@ -285,7 +313,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
           vkCreateCommandPool(device.device(), &poolInfo, nullptr,
                               &_commandPool),
           "vkCreateCommandPool failed")) {
-    return false;
+    return fail();
   }
 
   _commandBuffers.resize(_framebuffers.size());
@@ -299,7 +327,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
           vkAllocateCommandBuffers(device.device(), &allocInfo,
                                    _commandBuffers.data()),
           "vkAllocateCommandBuffers failed")) {
-    return false;
+    return fail();
   }
 
   VkSemaphoreCreateInfo semInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -315,7 +343,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
       !vulkan::check(
           vkCreateFence(device.device(), &fenceInfo, nullptr, &_inFlight),
           "vkCreateFence failed")) {
-    return false;
+    return fail();
   }
 
   return true;
