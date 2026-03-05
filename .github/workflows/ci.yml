@@ -21,8 +21,8 @@ jobs:
           set -euo pipefail
           SDK_ROOT="${RUNNER_TEMP}/VulkanSDK/${VULKAN_SDK_VERSION}"
           SDK_DIR="${RUNNER_TEMP}/vulkan_sdk"
-          ZIP_URL="https://sdk.lunarg.com/sdk/download/${VULKAN_SDK_VERSION}/mac/vulkan_sdk.zip"
-          curl -L "${ZIP_URL}" -o "${RUNNER_TEMP}/vulkan_sdk.zip"
+          ZIP_URL="https://sdk.lunarg.com/sdk/download/${VULKAN_SDK_VERSION}/mac/vulkansdk-macos-${VULKAN_SDK_VERSION}.zip"
+          curl -fL "${ZIP_URL}" -o "${RUNNER_TEMP}/vulkan_sdk.zip"
           mkdir -p "${SDK_DIR}"
           unzip -q "${RUNNER_TEMP}/vulkan_sdk.zip" -d "${SDK_DIR}"
           INSTALLER=$(find "${SDK_DIR}" -path "*InstallVulkan*.app/Contents/MacOS/InstallVulkan*" -type f | head -n 1)
