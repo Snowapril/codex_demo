@@ -48,6 +48,9 @@
 - Validation layers enabled in CI and local testing.
 - CI uses Vulkan SDK 1.4.341.1 on macOS.
 
+## Vulkan SDK Minimum
+- Windows/macOS minimum Vulkan SDK: 1.4.341.1
+
 ## Pre‑Push Verification
 - Before pushing:
   - macOS: run tests for both Metal and Vulkan backends.

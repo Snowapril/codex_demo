@@ -105,6 +105,9 @@
 - Windows: Vulkan SDK + DXC, build + headless tests
 - macOS: Vulkan SDK 1.4.341.1 + Metal Shader Converter, Metal/Vulkan headless tests
 
+## Vulkan SDK Minimum
+- Windows/macOS minimum Vulkan SDK: 1.4.341.1
+
 ## 9) Tests & Scenarios
 - RenderGraph compile test:
   - Pass resource conflicts detected
