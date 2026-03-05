@@ -27,10 +27,26 @@ jobs:
           unzip -q "${RUNNER_TEMP}/vulkan_sdk.zip" -d "${SDK_DIR}"
           INSTALLER=$(find "${SDK_DIR}" -path "*InstallVulkan*.app/Contents/MacOS/InstallVulkan*" -type f | head -n 1)
           if [ -z "${INSTALLER}" ]; then
+            DMG=$(find "${SDK_DIR}" -name "*.dmg" -type f | head -n 1)
+            if [ -n "${DMG}" ]; then
+              MOUNT_DIR=$(mktemp -d)
+              hdiutil attach "${DMG}" -mountpoint "${MOUNT_DIR}" -nobrowse -quiet
+              INSTALLER=$(find "${MOUNT_DIR}" -path "*InstallVulkan*.app/Contents/MacOS/InstallVulkan*" -type f | head -n 1)
+              if [ -z "${INSTALLER}" ]; then
+                hdiutil detach "${MOUNT_DIR}" -quiet
+                echo "InstallVulkan binary not found in mounted dmg"
+                exit 1
+              fi
+            fi
+          fi
+          if [ -z "${INSTALLER}" ]; then
             echo "InstallVulkan binary not found in SDK bundle"
             exit 1
           fi
           "${INSTALLER}" --root "${SDK_ROOT}" --accept-licenses --default-answer --confirm-command install copy_only=1
+          if [ -n "${MOUNT_DIR:-}" ]; then
+            hdiutil detach "${MOUNT_DIR}" -quiet
+          fi
           echo "VULKAN_SDK=${SDK_ROOT}" >> "${GITHUB_ENV}"
           echo "${SDK_ROOT}/bin" >> "${GITHUB_PATH}"
           echo "DYLD_LIBRARY_PATH=${SDK_ROOT}/lib" >> "${GITHUB_ENV}"
