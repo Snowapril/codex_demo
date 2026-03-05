@@ -67,6 +67,9 @@ jobs:
               hdiutil detach "${MOUNT_DIR}" -quiet
             fi
           fi
+          if [ -d "${SDK_ROOT}/macOS" ]; then
+            SDK_ROOT="${SDK_ROOT}/macOS"
+          fi
           echo "VULKAN_SDK=${SDK_ROOT}" >> "${GITHUB_ENV}"
           echo "${SDK_ROOT}/bin" >> "${GITHUB_PATH}"
           echo "DYLD_LIBRARY_PATH=${SDK_ROOT}/lib" >> "${GITHUB_ENV}"
