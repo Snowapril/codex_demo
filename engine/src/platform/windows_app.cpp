@@ -19,7 +19,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
       PostQuitMessage(0);
       return 0;
     default:
-      return DefWindowProc(hwnd, msg, wparam, lparam);
+      return DefWindowProcW(hwnd, msg, wparam, lparam);
   }
 }
 
@@ -54,17 +54,17 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
       desc.swapchain.height ? desc.swapchain.height : kDefaultHeight;
 
   const wchar_t kClassName[] = L"BlankVulkanWindow";
-  WNDCLASS wc{};
+  WNDCLASSW wc{};
   wc.lpfnWndProc = windowProc;
-  wc.hInstance = GetModuleHandle(nullptr);
+  wc.hInstance = GetModuleHandleW(nullptr);
   wc.lpszClassName = kClassName;
-  RegisterClass(&wc);
+  RegisterClassW(&wc);
 
   std::wstring title = toWide(desc.title);
-  HWND hwnd = CreateWindowEx(0, kClassName, title.c_str(),
-                             WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-                             static_cast<int>(width), static_cast<int>(height),
-                             nullptr, nullptr, wc.hInstance, nullptr);
+  HWND hwnd = CreateWindowExW(0, kClassName, title.c_str(),
+                              WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+                              static_cast<int>(width), static_cast<int>(height),
+                              nullptr, nullptr, wc.hInstance, nullptr);
   if (!hwnd) {
     return 1;
   }
