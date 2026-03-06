@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/vec2.hpp>
+
 #include "reng/app.h"
 
 namespace reng {
@@ -19,9 +21,6 @@ class BackendSwapchain {
   virtual uint32_t height() const = 0;
   virtual PixelFormat colorFormat() const = 0;
   virtual ResourceId acquireNextImage() = 0;
-
-  protected:
-    
 };
 
 class BackendResources {

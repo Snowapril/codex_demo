@@ -78,34 +78,6 @@ PixelFormat VulkanSwapchain::colorFormat() const {
   return vulkan::fromVkFormat(_format);
 }
 
-void VulkanSwapchain::recordCommandBuffer(uint32_t imageIndex) {
-  if (imageIndex >= _commandBuffers.size()) {
-    return;
-  }
-  VkCommandBuffer cmd = _commandBuffers[imageIndex];
-  VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-  if (!vulkan::check(vkBeginCommandBuffer(cmd, &beginInfo),
-                     "vkBeginCommandBuffer failed")) {
-    return;
-  }
-
-  VkClearValue clear{};
-  clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-
-  VkRenderPassBeginInfo renderPassInfo{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-  renderPassInfo.renderPass = _renderPass;
-  renderPassInfo.framebuffer = _framebuffers[imageIndex];
-  renderPassInfo.renderArea.offset = {0, 0};
-  renderPassInfo.renderArea.extent = _extent;
-  renderPassInfo.clearValueCount = 1;
-  renderPassInfo.pClearValues = &clear;
-
-  vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdEndRenderPass(cmd);
-
-  vulkan::check(vkEndCommandBuffer(cmd), "vkEndCommandBuffer failed");
-}
-
 bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
   if (!_device) {
     return false;
