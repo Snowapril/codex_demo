@@ -55,9 +55,9 @@ struct CompileReport {
 class BlitPassBuilder {
  public:
   explicit BlitPassBuilder(CommandBuffer& cmd) : _cmd(cmd) {}
-  void copyTexture(const std::string& src, const std::string& dst);
-  void uploadBuffer(const std::string& name, size_t bytes);
-  void uploadTexture(const std::string& name, size_t bytes);
+  void copyTexture(const ResourceId& src, const ResourceId& dst);
+  void uploadBuffer(const ResourceId& buffer, size_t bytes);
+  void uploadTexture(const ResourceId& texture, size_t bytes);
 
  private:
   CommandBuffer& _cmd;
@@ -111,7 +111,7 @@ class RenderGraph {
                          const std::function<void(BlitPassBuilder&)>& record);
 
   PassHandle addRenderPass(
-      const std::string& name, const std::string& framebufferName,
+      const std::string& name, const FramebufferDesc& framebuffer,
       const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
       const std::function<void(RenderPassBuilder&)>& record);
 
@@ -135,6 +135,7 @@ class RenderGraph {
     PassType type;
     QueueType preferredQueue;
     std::vector<ResourceAccess> accesses;
+    FramebufferDesc framebuffer;
     std::function<void(CommandBuffer&)> recordFn;
   };
 

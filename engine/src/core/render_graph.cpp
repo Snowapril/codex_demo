@@ -21,22 +21,30 @@ QueueType defaultQueueForPass(PassType type) {
   }
 }
 
-bool isWriteAccess(AccessType access) {
-  return access == AccessType::Write || access == AccessType::ReadWrite;
+bool isWriteAccess(const ResourceAccess& access) {
+  if (std::holds_alternative<BufferAccessType>(access.access)) {
+    auto mode = std::get<BufferAccessType>(access.access);
+    return mode == BufferAccessType::Write ||
+           mode == BufferAccessType::ReadWrite;
+  }
+  auto mode = std::get<TextureAccessType>(access.access);
+  return mode == TextureAccessType::RenderTarget ||
+         mode == TextureAccessType::Storage ||
+         mode == TextureAccessType::TransferDst;
 }
 }  // namespace
 
-void BlitPassBuilder::copyTexture(const std::string& src,
-                                  const std::string& dst) {
+void BlitPassBuilder::copyTexture(const ResourceId& src,
+                                  const ResourceId& dst) {
   _cmd.copyTexture(src, dst);
 }
 
-void BlitPassBuilder::uploadBuffer(const std::string& name, size_t bytes) {
-  _cmd.uploadBuffer(name, bytes);
+void BlitPassBuilder::uploadBuffer(const ResourceId& buffer, size_t bytes) {
+  _cmd.uploadBuffer(buffer, bytes);
 }
 
-void BlitPassBuilder::uploadTexture(const std::string& name, size_t bytes) {
-  _cmd.uploadTexture(name, bytes);
+void BlitPassBuilder::uploadTexture(const ResourceId& texture, size_t bytes) {
+  _cmd.uploadTexture(texture, bytes);
 }
 
 void RenderPassBuilder::draw(uint32_t vertexCount, uint32_t instanceCount) {
@@ -86,7 +94,7 @@ PassHandle RenderGraph::addBlitPass(
 }
 
 PassHandle RenderGraph::addRenderPass(
-    const std::string& name, const std::string& framebufferName,
+    const std::string& name, const FramebufferDesc& framebuffer,
     const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
     const std::function<void(RenderPassBuilder&)>& record) {
   PassHandle handle{static_cast<uint32_t>(_passes.size())};
@@ -96,8 +104,9 @@ PassHandle RenderGraph::addRenderPass(
   desc.type = PassType::Render;
   desc.preferredQueue = preferredQueue;
   desc.accesses = accesses;
-  desc.recordFn = [record, framebufferName](CommandBuffer& cmd) {
-    cmd.beginRenderPass(framebufferName);
+  desc.framebuffer = framebuffer;
+  desc.recordFn = [record, framebuffer](CommandBuffer& cmd) {
+    cmd.beginRenderPass(framebuffer);
     RenderPassBuilder builder(cmd);
     record(builder);
     cmd.endRenderPass();
@@ -174,7 +183,7 @@ CompileReport RenderGraph::compile(const CompileOptions& options) {
     bool hasDependency = false;
     for (const auto& access : pass.accesses) {
       const uint32_t key = access.resource.value;
-      const bool write = isWriteAccess(access.access);
+      const bool write = isWriteAccess(access);
 
       if (lastWriter.count(key)) {
         PassHandle from = lastWriter[key];

@@ -9,15 +9,22 @@ class BlankApp : public reng::AppCallbacks {
 
   void onRender(reng::RenderGraph& graph) override {
     // Empty render pass: the backend will clear/present.
-    graph.addRenderPass(
-        "Blank", "swapchain",
-        {
-            {reng::ResourceId{1, reng::ResourceKind::Texture, "color"},
-             reng::AccessType::Write, reng::TextureUsage::RenderTarget},
-        },
-        reng::QueueType::Graphics,
-        [](reng::RenderPassBuilder& pass) { pass.draw(0); });
+    reng::FramebufferDesc framebuffer;
+    framebuffer.colorAttachments.push_back({swapchainColor,
+                                            reng::LoadAction::Clear,
+                                            reng::StoreAction::Store});
+    graph.addRenderPass("Blank", framebuffer,
+                        {
+                            {swapchainColor,
+                             reng::TextureAccessType::RenderTarget},
+                        },
+                        reng::QueueType::Graphics,
+                        [](reng::RenderPassBuilder& pass) { pass.draw(0); });
   }
+
+ private:
+  const reng::ResourceId swapchainColor{
+      1, reng::ResourceKind::Texture, "swapchain_color"};
 };
 
 int main() {

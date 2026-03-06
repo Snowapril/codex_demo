@@ -10,31 +10,31 @@ void CommandBuffer::endBlitPass() {
   _commands.push_back({CommandType::EndBlitPass});
 }
 
-void CommandBuffer::copyTexture(const std::string& src,
-                                const std::string& dst) {
+void CommandBuffer::copyTexture(const ResourceId& src,
+                                const ResourceId& dst) {
   Command cmd{CommandType::CopyTexture};
   cmd.a = src;
   cmd.b = dst;
   _commands.push_back(cmd);
 }
 
-void CommandBuffer::uploadBuffer(const std::string& name, size_t bytes) {
+void CommandBuffer::uploadBuffer(const ResourceId& buffer, size_t bytes) {
   Command cmd{CommandType::UploadBuffer};
-  cmd.a = name;
+  cmd.a = buffer;
   cmd.x = bytes;
   _commands.push_back(cmd);
 }
 
-void CommandBuffer::uploadTexture(const std::string& name, size_t bytes) {
+void CommandBuffer::uploadTexture(const ResourceId& texture, size_t bytes) {
   Command cmd{CommandType::UploadTexture};
-  cmd.a = name;
+  cmd.a = texture;
   cmd.x = bytes;
   _commands.push_back(cmd);
 }
 
-void CommandBuffer::beginRenderPass(const std::string& framebufferName) {
+void CommandBuffer::beginRenderPass(const FramebufferDesc& framebuffer) {
   Command cmd{CommandType::BeginRenderPass};
-  cmd.a = framebufferName;
+  cmd.framebuffer = framebuffer;
   _commands.push_back(cmd);
 }
 

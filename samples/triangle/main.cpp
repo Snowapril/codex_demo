@@ -10,21 +10,25 @@ int main() {
 
   ResourceId uploadBuffer{1, ResourceKind::Buffer, "upload_buffer"};
   ResourceId texture{2, ResourceKind::Texture, "color_tex"};
+  ResourceId swapchainColor{3, ResourceKind::Texture, "swapchain_color"};
 
   graph.addBlitPass(
       "Upload",
       {
-          {uploadBuffer, AccessType::Write, TextureUsage::Undefined},
-          {texture, AccessType::Write, TextureUsage::TransferDst},
+          {uploadBuffer, BufferAccessType::Write},
+          {texture, TextureAccessType::TransferDst},
       },
-      QueueType::Transfer, [](BlitPassBuilder& pass) {
-        pass.uploadBuffer("upload_buffer", 1024);
-        pass.uploadTexture("color_tex", 4096);
+      QueueType::Transfer, [uploadBuffer, texture](BlitPassBuilder& pass) {
+        pass.uploadBuffer(uploadBuffer, 1024);
+        pass.uploadTexture(texture, 4096);
       });
 
-  graph.addRenderPass("Render", "framebuffer_main",
+  FramebufferDesc framebuffer;
+  framebuffer.colorAttachments.push_back(
+      {swapchainColor, LoadAction::Clear, StoreAction::Store});
+  graph.addRenderPass("Render", framebuffer,
                       {
-                          {texture, AccessType::Read, TextureUsage::Sampled},
+                          {texture, TextureAccessType::Sampled},
                       },
                       QueueType::Graphics,
                       [](RenderPassBuilder& pass) { pass.draw(3, 1); });
@@ -32,7 +36,7 @@ int main() {
   graph.addComputePass(
       "Compute",
       {
-          {texture, AccessType::ReadWrite, TextureUsage::Storage},
+          {texture, TextureAccessType::Storage},
       },
       QueueType::Compute,
       [](ComputePassBuilder& pass) { pass.dispatch(8, 8, 1); });

@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <variant>
+#include <vector>
 
 namespace reng {
 
@@ -10,19 +13,37 @@ enum class ResourceKind : uint8_t {
   Texture,
 };
 
-enum class AccessType : uint8_t {
+enum class MemoryType : uint8_t {
+  DeviceLocal,
+  HostVisible,
+};
+
+enum class BufferAccessType : uint8_t {
   Read,
   Write,
   ReadWrite,
 };
 
-enum class TextureUsage : uint8_t {
+enum class TextureAccessType : uint8_t {
   Undefined,
   RenderTarget,
   Sampled,
   Storage,
   TransferSrc,
   TransferDst,
+};
+
+using AccessType = std::variant<BufferAccessType, TextureAccessType>;
+
+enum class LoadAction : uint8_t {
+  Load,
+  Clear,
+  DontCare,
+};
+
+enum class StoreAction : uint8_t {
+  Store,
+  DontCare,
 };
 
 struct ResourceId {
@@ -38,8 +59,25 @@ struct ResourceId {
 
 struct ResourceAccess {
   ResourceId resource;
-  AccessType access = AccessType::Read;
-  TextureUsage usage = TextureUsage::Undefined;
+  AccessType access;
+};
+
+struct FramebufferAttachment {
+  ResourceId resource;
+  LoadAction loadAction = LoadAction::Load;
+  StoreAction storeAction = StoreAction::Store;
+};
+
+struct FramebufferDesc {
+  std::vector<FramebufferAttachment> colorAttachments;
+  std::optional<FramebufferAttachment> depthStencilAttachment;
+};
+
+class ResourcePool {
+ public:
+  virtual ~ResourcePool() = default;
+  virtual void* lookupBuffer(const ResourceId& id) = 0;
+  virtual void* lookupTexture(const ResourceId& id) = 0;
 };
 
 }  // namespace reng

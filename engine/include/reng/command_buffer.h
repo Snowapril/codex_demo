@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstddef>
-#include <string>
+#include <optional>
 #include <vector>
+
+#include "reng/resources.h"
 
 namespace reng {
 
@@ -24,8 +26,9 @@ enum class CommandType : uint8_t {
 
 struct Command {
   CommandType type;
-  std::string a;
-  std::string b;
+  ResourceId a;
+  ResourceId b;
+  std::optional<FramebufferDesc> framebuffer;
   uint64_t x = 0;
   uint64_t y = 0;
   uint64_t z = 0;
@@ -35,11 +38,11 @@ class CommandBuffer {
  public:
   void beginBlitPass();
   void endBlitPass();
-  void copyTexture(const std::string& src, const std::string& dst);
-  void uploadBuffer(const std::string& name, size_t bytes);
-  void uploadTexture(const std::string& name, size_t bytes);
+  void copyTexture(const ResourceId& src, const ResourceId& dst);
+  void uploadBuffer(const ResourceId& buffer, size_t bytes);
+  void uploadTexture(const ResourceId& texture, size_t bytes);
 
-  void beginRenderPass(const std::string& framebufferName);
+  void beginRenderPass(const FramebufferDesc& framebuffer);
   void endRenderPass();
   void draw(uint32_t vertexCount, uint32_t instanceCount);
 
