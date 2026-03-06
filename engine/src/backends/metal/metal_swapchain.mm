@@ -3,12 +3,17 @@
 #import <Metal/Metal.h>
 
 #include "metal_utils.h"
+#include "reng/logger.h"
 
 namespace reng {
 
 MetalSwapchain::MetalSwapchain(CAMetalLayer* layer, MetalDevice& device,
+                               id<MTLCommandQueue> presentQueue,
                                const SwapchainDesc& desc)
-    : _layer(layer), _device(device), _desc(desc) {
+    : _layer(layer),
+      _device(device),
+      _presentQueue(presentQueue),
+      _desc(desc) {
   configureLayer(_desc);
 }
 
@@ -23,6 +28,7 @@ void MetalSwapchain::configureLayer(const SwapchainDesc& desc) {
   _layer.pixelFormat = metal::toMetalFormat(desc.colorFormat);
   _layer.framebufferOnly = YES;
   _layer.drawableSize = CGSizeMake(desc.width, desc.height);
+  _size = {desc.width, desc.height};
   if (@available(macOS 12.0, *)) {
     _layer.displaySyncEnabled = (desc.presentMode == PresentMode::Vsync);
   }
@@ -42,7 +48,12 @@ void MetalSwapchain::present() {
     pass.colorAttachments[0].storeAction = MTLStoreActionStore;
     pass.colorAttachments[0].clearColor = MTLClearColorMake(0.05, 0.05, 0.08, 1.0);
 
-    id<MTLCommandBuffer> cmd = [_device.queue() commandBuffer];
+    if (!_presentQueue) {
+      RengLogger::logError("Missing Metal present queue");
+      return;
+    }
+
+    id<MTLCommandBuffer> cmd = [_presentQueue commandBuffer];
     id<MTLRenderCommandEncoder> encoder =
         [cmd renderCommandEncoderWithDescriptor:pass];
     [encoder endEncoding];

@@ -11,6 +11,7 @@ add_library(reng_core
 
 target_include_directories(reng_core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/glm
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
@@ -40,6 +41,7 @@ if(APPLE)
     src/platform/macos_app.mm
     src/platform/backend_factory_macos.mm
     src/backends/metal/metal_device.mm
+    src/backends/metal/metal_queue_timeline.mm
     src/backends/metal/metal_resources.mm
     src/backends/metal/metal_swapchain.mm
     src/backends/metal/metal_utils.mm
@@ -60,6 +62,7 @@ endif()
 if(APPLE AND RENG_ENABLE_VULKAN)
   target_sources(reng_core PRIVATE
     src/backends/vulkan/vulkan_device.cpp
+    src/backends/vulkan/vulkan_queue_timeline.cpp
     src/backends/vulkan/vulkan_resources.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp
@@ -73,6 +76,7 @@ if(WIN32)
     src/platform/windows_app.cpp
     src/platform/backend_factory_windows.cpp
     src/backends/vulkan/vulkan_device.cpp
+    src/backends/vulkan/vulkan_queue_timeline.cpp
     src/backends/vulkan/vulkan_resources.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp

@@ -30,8 +30,8 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       return bundle;
     }
     auto device = std::make_unique<MetalDevice>();
-    auto swapchain =
-        std::make_unique<MetalSwapchain>(layer, *device, desc.swapchain);
+    auto swapchain = std::make_unique<MetalSwapchain>(
+        layer, *device, device->queue(), desc.swapchain);
     auto resources = std::make_unique<MetalResources>();
     bundle.device = std::move(device);
     bundle.swapchain = std::move(swapchain);
@@ -53,7 +53,7 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       return bundle;
     }
     auto swapchain = std::make_unique<VulkanSwapchain>();
-    if (!swapchain->init(*device, desc.swapchain)) {
+    if (!swapchain->init(*device, device->graphicsQueue(), desc.swapchain)) {
       RengLogger::logError("Failed to initialize Vulkan swapchain");
       device->shutdown();
       return bundle;

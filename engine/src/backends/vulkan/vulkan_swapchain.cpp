@@ -9,7 +9,13 @@
 namespace reng {
 
 bool VulkanSwapchain::init(VulkanDevice& device, const SwapchainDesc& desc) {
+  return init(device, device.graphicsQueue(), desc);
+}
+
+bool VulkanSwapchain::init(VulkanDevice& device, VkQueue presentQueue,
+                           const SwapchainDesc& desc) {
   _device = &device;
+  _presentQueue = presentQueue;
   return createSwapchainResources(desc);
 }
 
@@ -33,45 +39,28 @@ void VulkanSwapchain::present() {
     return;
   }
   VkDevice device = _device->device();
-  VkQueue queue = _device->graphicsQueue();
+  if (_presentQueue == VK_NULL_HANDLE) {
+    RengLogger::logError("Missing Vulkan present queue");
+    return;
+  }
 
   vkWaitForFences(device, 1, &_inFlight, VK_TRUE, UINT64_MAX);
   vkResetFences(device, 1, &_inFlight);
 
   uint32_t imageIndex = 0;
   if (!vulkan::check(vkAcquireNextImageKHR(device, _swapchain, UINT64_MAX,
-                                   _imageAvailable, VK_NULL_HANDLE,
-                                   &imageIndex),
+                                   VK_NULL_HANDLE, _inFlight, &imageIndex),
              "vkAcquireNextImageKHR failed")) {
     return;
   }
 
-  vkResetCommandBuffer(_commandBuffers[imageIndex], 0);
-  recordCommandBuffer(imageIndex);
-
-  VkPipelineStageFlags waitStage =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-  submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = &_imageAvailable;
-  submitInfo.pWaitDstStageMask = &waitStage;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &_commandBuffers[imageIndex];
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = &_renderFinished;
-
-  if (!vulkan::check(vkQueueSubmit(queue, 1, &submitInfo, _inFlight),
-             "vkQueueSubmit failed")) {
-    return;
-  }
-
   VkPresentInfoKHR presentInfo{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
-  presentInfo.waitSemaphoreCount = 1;
-  presentInfo.pWaitSemaphores = &_renderFinished;
+  presentInfo.waitSemaphoreCount = 0;
+  presentInfo.pWaitSemaphores = nullptr;
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = &_swapchain;
   presentInfo.pImageIndices = &imageIndex;
-  vkQueuePresentKHR(queue, &presentInfo);
+  vkQueuePresentKHR(_presentQueue, &presentInfo);
 }
 
 PixelFormat VulkanSwapchain::colorFormat() const {
@@ -132,6 +121,8 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
         std::clamp(desc.height, caps.minImageExtent.height,
                    caps.maxImageExtent.height)};
   }
+  _size = {static_cast<uint32_t>(_extent.width),
+           static_cast<uint32_t>(_extent.height)};
 
   uint32_t imageCount = caps.minImageCount + 1;
   if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount) {
@@ -236,69 +227,10 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
     }
   }
 
-  VkAttachmentDescription colorAttachment{};
-  colorAttachment.format = _format;
-  colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-  VkAttachmentReference colorRef{};
-  colorRef.attachment = 0;
-  colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-  VkSubpassDescription subpass{};
-  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments = &colorRef;
-
-  VkRenderPassCreateInfo renderPassInfo{
-      VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-  renderPassInfo.attachmentCount = 1;
-  renderPassInfo.pAttachments = &colorAttachment;
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpass;
-
-  if (!vulkan::check(
-          vkCreateRenderPass(device.device(), &renderPassInfo, nullptr,
-                             &_renderPass),
-          "vkCreateRenderPass failed")) {
-    return fail();
-  }
-
-  _framebuffers.resize(_imageViews.size());
-  for (size_t i = 0; i < _imageViews.size(); ++i) {
-    VkImageView attachments[] = {_imageViews[i]};
-    VkFramebufferCreateInfo fbInfo{
-        VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-    fbInfo.renderPass = _renderPass;
-    fbInfo.attachmentCount = 1;
-    fbInfo.pAttachments = attachments;
-    fbInfo.width = _extent.width;
-    fbInfo.height = _extent.height;
-    fbInfo.layers = 1;
-
-    if (!vulkan::check(vkCreateFramebuffer(device.device(), &fbInfo, nullptr,
-                                           &_framebuffers[i]),
-                       "vkCreateFramebuffer failed")) {
-      return fail();
-    }
-  }
-
-  VkSemaphoreCreateInfo semInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
   VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-  if (!vulkan::check(vkCreateSemaphore(device.device(), &semInfo, nullptr,
-                                       &_imageAvailable),
-                     "vkCreateSemaphore failed") ||
-      !vulkan::check(vkCreateSemaphore(device.device(), &semInfo, nullptr,
-                                       &_renderFinished),
-                     "vkCreateSemaphore failed") ||
-      !vulkan::check(
+  if (!vulkan::check(
           vkCreateFence(device.device(), &fenceInfo, nullptr, &_inFlight),
           "vkCreateFence failed")) {
     return fail();
@@ -310,26 +242,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
 void VulkanSwapchain::destroySwapchainResources(VkDevice device) {
   if (device != VK_NULL_HANDLE) {
     vkDestroyFence(device, _inFlight, nullptr);
-    vkDestroySemaphore(device, _renderFinished, nullptr);
-    vkDestroySemaphore(device, _imageAvailable, nullptr);
     _inFlight = VK_NULL_HANDLE;
-    _renderFinished = VK_NULL_HANDLE;
-    _imageAvailable = VK_NULL_HANDLE;
-
-    for (auto fb : _framebuffers) {
-      vkDestroyFramebuffer(device, fb, nullptr);
-    }
-    _framebuffers.clear();
-
-    if (_renderPass != VK_NULL_HANDLE) {
-      vkDestroyRenderPass(device, _renderPass, nullptr);
-      _renderPass = VK_NULL_HANDLE;
-    }
-
-    if (_commandPool != VK_NULL_HANDLE) {
-      vkDestroyCommandPool(device, _commandPool, nullptr);
-      _commandPool = VK_NULL_HANDLE;
-    }
   }
 
   for (auto view : _imageViews) {

@@ -3,6 +3,7 @@
 #include <glm/vec2.hpp>
 
 #include "reng/app.h"
+#include "reng/reng.h"
 
 namespace reng {
 
@@ -17,10 +18,14 @@ class BackendSwapchain {
   virtual ~BackendSwapchain() = default;
   virtual bool recreate(const SwapchainDesc& desc) = 0;
   virtual void present() = 0;
-  virtual uint32_t width() const = 0;
-  virtual uint32_t height() const = 0;
   virtual PixelFormat colorFormat() const = 0;
-  virtual ResourceId acquireNextImage() = 0;
+  virtual reng_nodiscard ResourceId acquireNextImage() = 0;
+
+  reng_inline uint32_t width() const { return _size.x; }
+  reng_inline uint32_t height() const { return _size.y; }
+
+ protected:
+  glm::uvec2 _size{0, 0};
 };
 
 class BackendResources {
