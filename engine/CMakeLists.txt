@@ -5,6 +5,7 @@ add_library(reng_core
   src/core/device.cpp
   src/core/engine.cpp
   src/core/logger.cpp
+  src/core/resource_pool.cpp
   src/platform/app.cpp
 )
 
@@ -39,6 +40,7 @@ if(APPLE)
     src/platform/macos_app.mm
     src/platform/backend_factory_macos.mm
     src/backends/metal/metal_device.mm
+    src/backends/metal/metal_resources.mm
     src/backends/metal/metal_swapchain.mm
     src/backends/metal/metal_utils.mm
   )
@@ -58,6 +60,7 @@ endif()
 if(APPLE AND RENG_ENABLE_VULKAN)
   target_sources(reng_core PRIVATE
     src/backends/vulkan/vulkan_device.cpp
+    src/backends/vulkan/vulkan_resources.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp
   )
@@ -70,6 +73,7 @@ if(WIN32)
     src/platform/windows_app.cpp
     src/platform/backend_factory_windows.cpp
     src/backends/vulkan/vulkan_device.cpp
+    src/backends/vulkan/vulkan_resources.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp
   )

@@ -4,10 +4,12 @@
 #include "reng/logger.h"
 
 #include "backends/metal/metal_device.h"
+#include "backends/metal/metal_resources.h"
 #include "backends/metal/metal_swapchain.h"
 
 #if defined(RENG_ENABLE_VULKAN)
 #include "backends/vulkan/vulkan_device.h"
+#include "backends/vulkan/vulkan_resources.h"
 #include "backends/vulkan/vulkan_swapchain.h"
 #endif
 
@@ -30,8 +32,10 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
     auto device = std::make_unique<MetalDevice>();
     auto swapchain =
         std::make_unique<MetalSwapchain>(layer, *device, desc.swapchain);
+    auto resources = std::make_unique<MetalResources>();
     bundle.device = std::move(device);
     bundle.swapchain = std::move(swapchain);
+    bundle.resources = std::move(resources);
     return bundle;
   }
 
@@ -54,8 +58,10 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       device->shutdown();
       return bundle;
     }
+    auto resources = std::make_unique<VulkanResources>();
     bundle.device = std::move(device);
     bundle.swapchain = std::move(swapchain);
+    bundle.resources = std::move(resources);
     return bundle;
 #else
     RengLogger::logError("Vulkan backend is disabled in this build");

@@ -11,6 +11,7 @@ namespace reng {
 struct BackendBundle {
   std::unique_ptr<BackendDevice> device;
   std::unique_ptr<BackendSwapchain> swapchain;
+  std::unique_ptr<BackendResources> resources;
 };
 
 BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context);

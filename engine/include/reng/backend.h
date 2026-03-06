@@ -15,11 +15,26 @@ class BackendSwapchain {
   virtual ~BackendSwapchain() = default;
   virtual bool recreate(const SwapchainDesc& desc) = 0;
   virtual void present() = 0;
+  virtual uint32_t width() const = 0;
+  virtual uint32_t height() const = 0;
+  virtual PixelFormat colorFormat() const = 0;
+  virtual ResourceId acquireNextImage() = 0;
+
+  protected:
+    
 };
 
 class BackendResources {
  public:
   virtual ~BackendResources() = default;
+  virtual void* createBuffer(const ResourceId& id,
+                             const BufferCreateDesc& desc) = 0;
+  virtual void* createTexture(const ResourceId& id,
+                              const TextureCreateDesc& desc) = 0;
+  virtual void* createSwapchainTexture(const ResourceId& id,
+                                       const TextureCreateDesc& desc) = 0;
+  virtual void destroyBuffer(void* handle) = 0;
+  virtual void destroyTexture(void* handle) = 0;
 };
 
 class BackendCommand {

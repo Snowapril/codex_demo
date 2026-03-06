@@ -10,4 +10,12 @@ MTLPixelFormat toMetalFormat(PixelFormat format) {
   }
 }
 
+PixelFormat fromMetalFormat(MTLPixelFormat format) {
+  switch (format) {
+    case MTLPixelFormatBGRA8Unorm:
+    default:
+      return PixelFormat::Bgra8Unorm;
+  }
+}
+
 }  // namespace reng::metal

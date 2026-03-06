@@ -1,9 +1,24 @@
 #include "reng/app.h"
+#include "reng/engine.h"
 #include "reng/logger.h"
 
 class BlankApp : public reng::AppCallbacks {
  public:
   BlankApp() = default;
+
+  bool onInit(reng::Engine& engine) override {
+    reng::ResourcePool* pool = engine.resourcePool();
+    pool->addSwapchainTexture(swapchainColor, reng::TextureCreateDesc{
+        .width = engine.swapchain()->width(),
+        .height = engine.swapchain()->height(),
+        .format = engine.swapchain()->colorFormat(),
+        .slices = 1,
+        .mips = 1,
+        .type = reng::TextureType::Texture2D,
+        .usage = reng::TextureUsage::RenderTarget | reng::TextureUsage::Present,
+    });
+    return true;
+  }
 
   void onUpdateRender(reng::RenderGraph& graph) override { (void)graph; }
 

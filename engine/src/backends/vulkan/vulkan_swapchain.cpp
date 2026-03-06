@@ -28,28 +28,6 @@ void VulkanSwapchain::shutdown(VkDevice device) {
   _device = nullptr;
 }
 
-void VulkanSwapchain::recordCommandBuffer(uint32_t imageIndex) {
-  VkCommandBuffer cmd = _commandBuffers[imageIndex];
-  VkCommandBufferBeginInfo beginInfo{
-      VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-  vkBeginCommandBuffer(cmd, &beginInfo);
-
-  VkClearValue clear{};
-  clear.color = {{0.05f, 0.05f, 0.08f, 1.0f}};
-
-  VkRenderPassBeginInfo rpInfo{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-  rpInfo.renderPass = _renderPass;
-  rpInfo.framebuffer = _framebuffers[imageIndex];
-  rpInfo.renderArea.offset = {0, 0};
-  rpInfo.renderArea.extent = _extent;
-  rpInfo.clearValueCount = 1;
-  rpInfo.pClearValues = &clear;
-
-  vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdEndRenderPass(cmd);
-  vkEndCommandBuffer(cmd);
-}
-
 void VulkanSwapchain::present() {
   if (!_device) {
     return;
@@ -94,6 +72,38 @@ void VulkanSwapchain::present() {
   presentInfo.pSwapchains = &_swapchain;
   presentInfo.pImageIndices = &imageIndex;
   vkQueuePresentKHR(queue, &presentInfo);
+}
+
+PixelFormat VulkanSwapchain::colorFormat() const {
+  return vulkan::fromVkFormat(_format);
+}
+
+void VulkanSwapchain::recordCommandBuffer(uint32_t imageIndex) {
+  if (imageIndex >= _commandBuffers.size()) {
+    return;
+  }
+  VkCommandBuffer cmd = _commandBuffers[imageIndex];
+  VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+  if (!vulkan::check(vkBeginCommandBuffer(cmd, &beginInfo),
+                     "vkBeginCommandBuffer failed")) {
+    return;
+  }
+
+  VkClearValue clear{};
+  clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+
+  VkRenderPassBeginInfo renderPassInfo{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+  renderPassInfo.renderPass = _renderPass;
+  renderPassInfo.framebuffer = _framebuffers[imageIndex];
+  renderPassInfo.renderArea.offset = {0, 0};
+  renderPassInfo.renderArea.extent = _extent;
+  renderPassInfo.clearValueCount = 1;
+  renderPassInfo.pClearValues = &clear;
+
+  vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdEndRenderPass(cmd);
+
+  vulkan::check(vkEndCommandBuffer(cmd), "vkEndCommandBuffer failed");
 }
 
 bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
@@ -304,30 +314,6 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
                        "vkCreateFramebuffer failed")) {
       return fail();
     }
-  }
-
-  VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-  poolInfo.queueFamilyIndex = device.graphicsQueueFamily();
-  poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  if (!vulkan::check(
-          vkCreateCommandPool(device.device(), &poolInfo, nullptr,
-                              &_commandPool),
-          "vkCreateCommandPool failed")) {
-    return fail();
-  }
-
-  _commandBuffers.resize(_framebuffers.size());
-  VkCommandBufferAllocateInfo allocInfo{
-      VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-  allocInfo.commandPool = _commandPool;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandBufferCount =
-      static_cast<uint32_t>(_commandBuffers.size());
-  if (!vulkan::check(
-          vkAllocateCommandBuffers(device.device(), &allocInfo,
-                                   _commandBuffers.data()),
-          "vkAllocateCommandBuffers failed")) {
-    return fail();
   }
 
   VkSemaphoreCreateInfo semInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};

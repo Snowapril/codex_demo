@@ -27,6 +27,15 @@ VkFormat toVkFormat(PixelFormat format) {
   }
 }
 
+PixelFormat fromVkFormat(VkFormat format) {
+  switch (format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+      return PixelFormat::Bgra8Unorm;
+    default:
+      return PixelFormat::Bgra8Unorm;
+  }
+}
+
 std::vector<const char*> gatherDeviceExtensions(VkPhysicalDevice device) {
   std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
   uint32_t count = 0;

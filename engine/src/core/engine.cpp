@@ -1,5 +1,6 @@
 #include "reng/engine.h"
 
+#include "core/resource_pool.h"
 #include "platform/backend_factory.h"
 #include "reng/logger.h"
 
@@ -16,6 +17,11 @@ std::unique_ptr<Engine> Engine::create(const AppDesc& desc,
     RengLogger::logError("Failed to initialize backend");
     return nullptr;
   }
+
+  if (!engine->_callbacks.onInit(*engine)) {
+    RengLogger::logError("App initialization failed");
+    return nullptr;
+  }
   return engine;
 }
 
@@ -23,7 +29,12 @@ bool Engine::initBackend(const PlatformContext& context) {
   BackendBundle bundle = createBackend(_desc, context);
   _device = std::move(bundle.device);
   _swapchain = std::move(bundle.swapchain);
-  return _device && _swapchain;
+  _resources = std::move(bundle.resources);
+  if (!_device || !_swapchain || !_resources) {
+    return false;
+  }
+  _resourcePool = std::make_unique<ResourcePoolImpl>(*_resources);
+  return true;
 }
 
 void Engine::tick(float deltaSeconds) {

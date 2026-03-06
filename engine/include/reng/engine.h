@@ -7,6 +7,7 @@
 #include "reng/backend.h"
 #include "reng/platform.h"
 #include "reng/render_graph.h"
+#include "reng/resources.h"
 
 namespace reng {
 
@@ -17,6 +18,8 @@ class Engine {
                                         const PlatformContext& context);
 
   void tick(float deltaSeconds);
+  ResourcePool* resourcePool() { return _resourcePool.get(); }
+  BackendSwapchain* swapchain() { return _swapchain.get(); }
 
  private:
   Engine(const AppDesc& desc, AppCallbacks& callbacks);
@@ -27,6 +30,8 @@ class Engine {
   RenderGraph _graph;
   std::unique_ptr<BackendDevice> _device;
   std::unique_ptr<BackendSwapchain> _swapchain;
+  std::unique_ptr<BackendResources> _resources;
+  std::unique_ptr<ResourcePool> _resourcePool;
 };
 
 }  // namespace reng
