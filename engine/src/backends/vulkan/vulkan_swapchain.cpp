@@ -45,13 +45,8 @@ void VulkanSwapchain::present() {
     return;
   }
 
-  vkWaitForFences(device, 1, &_inFlight, VK_TRUE, UINT64_MAX);
-  vkResetFences(device, 1, &_inFlight);
-
-  uint32_t imageIndex = 0;
-  if (!vulkan::check(vkAcquireNextImageKHR(device, _swapchain, UINT64_MAX,
-                                   VK_NULL_HANDLE, _inFlight, &imageIndex),
-             "vkAcquireNextImageKHR failed")) {
+  if (!_hasAcquiredImage) {
+    RengLogger::logError("Vulkan present called without acquired image");
     return;
   }
 
@@ -60,12 +55,33 @@ void VulkanSwapchain::present() {
   presentInfo.pWaitSemaphores = nullptr;
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = &_swapchain;
-  presentInfo.pImageIndices = &imageIndex;
+  presentInfo.pImageIndices = &_acquiredImageIndex;
   vkQueuePresentKHR(_presentQueue->queue(), &presentInfo);
+
+  _hasAcquiredImage = false;
 }
 
 PixelFormat VulkanSwapchain::colorFormat() const {
   return vulkan::fromVkFormat(_format);
+}
+
+ResourceId VulkanSwapchain::acquireNextImage() {
+  if (!_device) {
+    return _swapchainResource;
+  }
+  VkDevice device = _device->device();
+  vkWaitForFences(device, 1, &_inFlight, VK_TRUE, UINT64_MAX);
+  vkResetFences(device, 1, &_inFlight);
+
+  if (!vulkan::check(vkAcquireNextImageKHR(device, _swapchain, UINT64_MAX,
+                                           VK_NULL_HANDLE, _inFlight,
+                                           &_acquiredImageIndex),
+                     "vkAcquireNextImageKHR failed")) {
+    _hasAcquiredImage = false;
+    return _swapchainResource;
+  }
+  _hasAcquiredImage = true;
+  return _swapchainResource;
 }
 
 bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
@@ -245,6 +261,7 @@ void VulkanSwapchain::destroySwapchainResources(VkDevice device) {
     vkDestroyFence(device, _inFlight, nullptr);
     _inFlight = VK_NULL_HANDLE;
   }
+  _hasAcquiredImage = false;
 
   for (auto view : _imageViews) {
     vkDestroyImageView(device, view, nullptr);

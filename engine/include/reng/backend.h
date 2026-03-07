@@ -26,6 +26,7 @@ class BackendSwapchain {
  public:
   virtual ~BackendSwapchain() = default;
   virtual bool recreate(const SwapchainDesc& desc) = 0;
+  virtual void signalPresentReady() = 0;
   virtual void present() = 0;
   virtual PixelFormat colorFormat() const = 0;
   virtual reng_nodiscard ResourceId acquireNextImage() = 0;

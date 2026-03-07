@@ -24,9 +24,10 @@ class VulkanSwapchain : public BackendSwapchain {
             const SwapchainDesc& desc);
   bool recreate(const SwapchainDesc& desc) override;
   void shutdown(VkDevice device);
+  void signalPresentReady() override {}
   void present() override;
   PixelFormat colorFormat() const override;
-  ResourceId acquireNextImage() override { return _swapchainResource; }
+  ResourceId acquireNextImage() override;
 
   VkSwapchainKHR swapchain() const { return _swapchain; }
   VkFormat format() const { return _format; }
@@ -44,6 +45,8 @@ class VulkanSwapchain : public BackendSwapchain {
   std::vector<VkImage> _images;
   std::vector<VkImageView> _imageViews;
   VkFence _inFlight = VK_NULL_HANDLE;
+  uint32_t _acquiredImageIndex = 0;
+  bool _hasAcquiredImage = false;
   ResourceId _swapchainResource{1, ResourceKind::Texture, "swapchain_color"};
 };
 

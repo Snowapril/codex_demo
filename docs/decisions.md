@@ -46,6 +46,7 @@
   - `RENG_HEADLESS_TESTS`
 - CI runs tests after build on Windows/macOS.
 - Validation layers enabled in CI and local testing.
+  - macOS Metal tests run with `MTL_DEBUG_LAYER=1` set in the invocation environment.
 - CI uses Vulkan SDK 1.4.341.1 on macOS.
 
 ## Vulkan SDK Minimum

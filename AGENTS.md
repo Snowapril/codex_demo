@@ -7,6 +7,7 @@
 - RenderGraph flow: **Build → Compile → Resolve → Execute**. Command buffers are created/recorded/executed from the graph.
 - Resource tracking and dependency analysis determine queue compatibility and required sync (auto‑inserted).
 - CI runs validation layers and headless smoke tests on Windows/macOS.
+  - macOS Metal tests run with `MTL_DEBUG_LAYER=1` set in the invocation environment.
 
 ## 1) Architecture & Repo Layout
 - `/engine/include` public API
