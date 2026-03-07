@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "reng/command_buffer.h"
+#include "reng/backend.h"
 
 namespace reng {
 
@@ -59,7 +60,7 @@ void MLPassBuilder::dispatch(uint32_t x, uint32_t y, uint32_t z) {
   _cmd.dispatchML(x, y, z);
 }
 
-ResolvedFrame::ResolvedFrame(std::vector<CommandBuffer>&& buffers)
+ResolvedFrame::ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers)
     : _buffers(std::move(buffers)) {}
 
 void ResolvedFrame::execute() {
@@ -217,13 +218,13 @@ CompileReport RenderGraph::compile(const CompileOptions& options) {
   return report;
 }
 
-ResolvedFrame RenderGraph::resolve() {
-  std::vector<CommandBuffer> buffers;
+ResolvedFrame RenderGraph::resolve(BackendDevice& device) {
+  std::vector<std::unique_ptr<CommandBuffer>> buffers;
   buffers.reserve(_passes.size());
   for (const auto& pass : _passes) {
-    CommandBuffer cmd;
+    auto cmd = device.createCommandBuffer(pass.preferredQueue);
     if (pass.recordFn) {
-      pass.recordFn(cmd);
+      pass.recordFn(*cmd);
     }
     buffers.push_back(std::move(cmd));
   }

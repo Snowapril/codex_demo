@@ -7,6 +7,8 @@
 #include <variant>
 #include <vector>
 
+#include <glm/vec4.hpp>
+
 namespace reng {
 
 enum class PixelFormat : uint8_t;
@@ -93,6 +95,9 @@ struct FramebufferAttachment {
   ResourceId resource;
   LoadAction loadAction = LoadAction::Load;
   StoreAction storeAction = StoreAction::Store;
+  glm::vec4 clearColor{0.0f, 0.0f, 0.0f, 1.0f};
+  float clearDepth = 1.0f;
+  uint8_t clearStencil = 0;
 };
 
 struct FramebufferDesc {

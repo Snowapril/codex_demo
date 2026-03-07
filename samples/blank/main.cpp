@@ -1,10 +1,11 @@
 #include "reng/app.h"
 #include "reng/engine.h"
 #include "reng/logger.h"
+#include "reng/resources.h"
 
 class BlankApp : public reng::AppCallbacks {
  public:
-  BlankApp() = default;
+  BlankApp() : _seed(0x12345678u) {}
 
   bool onInit(reng::Engine& engine) override {
     reng::ResourcePool* pool = engine.resourcePool();
@@ -25,9 +26,12 @@ class BlankApp : public reng::AppCallbacks {
   void onRender(reng::RenderGraph& graph) override {
     // Empty render pass: the backend will clear/present.
     reng::FramebufferDesc framebuffer;
-    framebuffer.colorAttachments.push_back({swapchainColor,
-                                            reng::LoadAction::Clear,
-                                            reng::StoreAction::Store});
+    reng::FramebufferAttachment colorAttachment;
+    colorAttachment.resource = swapchainColor;
+    colorAttachment.loadAction = reng::LoadAction::Clear;
+    colorAttachment.storeAction = reng::StoreAction::Store;
+    colorAttachment.clearColor = randomClearColor();
+    framebuffer.colorAttachments.push_back(colorAttachment);
     graph.addRenderPass("Blank", framebuffer,
                         {
                             {swapchainColor,
@@ -38,8 +42,19 @@ class BlankApp : public reng::AppCallbacks {
   }
 
  private:
+  glm::vec4 randomClearColor() {
+    return {nextFloat(), nextFloat(), nextFloat(), 1.0f};
+  }
+
+  float nextFloat() {
+    _seed = 1664525u * _seed + 1013904223u;
+    uint32_t value = (_seed >> 8) & 0x00FFFFFFu;
+    return static_cast<float>(value) / 16777215.0f;
+  }
+
   const reng::ResourceId swapchainColor{
       1, reng::ResourceKind::Texture, "swapchain_color"};
+  uint32_t _seed = 0;
 };
 
 int main(int argc, char** argv) {

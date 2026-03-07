@@ -9,6 +9,7 @@
 #include "metal_command_queue.h"
 #include "reng/backend.h"
 #include "reng/device.h"
+#include "metal_command_buffer.h"
 
 namespace reng {
 
@@ -25,6 +26,8 @@ class MetalDevice : public BackendDevice {
   CommandQueue* copyQueue(size_t index) const override {
     return index < _copyQueues.size() ? _copyQueues[index].get() : nullptr;
   }
+  std::unique_ptr<CommandBuffer> createCommandBuffer(
+      QueueType queueType) override;
 
  private:
   DeviceDesc _desc;

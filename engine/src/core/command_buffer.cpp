@@ -1,84 +1,107 @@
 #include "reng/command_buffer.h"
 
+#include "reng/logger.h"
+
 namespace reng {
 
 void CommandBuffer::beginBlitPass() {
-  _commands.push_back({CommandType::BeginBlitPass});
+  if (passState() != PassState::None) {
+    RengLogger::logWarning("beginBlitPass called while another pass is active");
+    return;
+  }
+  setPassState(PassState::Blit);
+  onBeginBlitPass();
 }
 
 void CommandBuffer::endBlitPass() {
-  _commands.push_back({CommandType::EndBlitPass});
+  if (passState() != PassState::Blit) {
+    RengLogger::logWarning("endBlitPass called without active blit pass");
+    return;
+  }
+  onEndBlitPass();
+  setPassState(PassState::None);
 }
 
 void CommandBuffer::copyTexture(const ResourceId& src,
                                 const ResourceId& dst) {
-  Command cmd{CommandType::CopyTexture};
-  cmd.a = src;
-  cmd.b = dst;
-  _commands.push_back(cmd);
+  onCopyTexture(src, dst);
 }
 
 void CommandBuffer::uploadBuffer(const ResourceId& buffer, size_t bytes) {
-  Command cmd{CommandType::UploadBuffer};
-  cmd.a = buffer;
-  cmd.x = bytes;
-  _commands.push_back(cmd);
+  onUploadBuffer(buffer, bytes);
 }
 
 void CommandBuffer::uploadTexture(const ResourceId& texture, size_t bytes) {
-  Command cmd{CommandType::UploadTexture};
-  cmd.a = texture;
-  cmd.x = bytes;
-  _commands.push_back(cmd);
+  onUploadTexture(texture, bytes);
 }
 
 void CommandBuffer::beginRenderPass(const FramebufferDesc& framebuffer) {
-  Command cmd{CommandType::BeginRenderPass};
-  cmd.framebuffer = framebuffer;
-  _commands.push_back(cmd);
+  if (passState() != PassState::None) {
+    RengLogger::logWarning(
+        "beginRenderPass called while another pass is active");
+    return;
+  }
+  setPassState(PassState::Render);
+  onBeginRenderPass(framebuffer);
 }
 
 void CommandBuffer::endRenderPass() {
-  _commands.push_back({CommandType::EndRenderPass});
+  if (passState() != PassState::Render) {
+    RengLogger::logWarning("endRenderPass called without active render pass");
+    return;
+  }
+  onEndRenderPass();
+  setPassState(PassState::None);
 }
 
 void CommandBuffer::draw(uint32_t vertexCount, uint32_t instanceCount) {
-  Command cmd{CommandType::Draw};
-  cmd.x = vertexCount;
-  cmd.y = instanceCount;
-  _commands.push_back(cmd);
+  onDraw(vertexCount, instanceCount);
 }
 
 void CommandBuffer::beginComputePass() {
-  _commands.push_back({CommandType::BeginComputePass});
+  if (passState() != PassState::None) {
+    RengLogger::logWarning(
+        "beginComputePass called while another pass is active");
+    return;
+  }
+  setPassState(PassState::Compute);
+  onBeginComputePass();
 }
 
 void CommandBuffer::endComputePass() {
-  _commands.push_back({CommandType::EndComputePass});
+  if (passState() != PassState::Compute) {
+    RengLogger::logWarning(
+        "endComputePass called without active compute pass");
+    return;
+  }
+  onEndComputePass();
+  setPassState(PassState::None);
 }
 
 void CommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z) {
-  Command cmd{CommandType::Dispatch};
-  cmd.x = x;
-  cmd.y = y;
-  cmd.z = z;
-  _commands.push_back(cmd);
+  onDispatch(x, y, z);
 }
 
 void CommandBuffer::beginMLPass() {
-  _commands.push_back({CommandType::BeginMLPass});
+  if (passState() != PassState::None) {
+    RengLogger::logWarning("beginMLPass called while another pass is active");
+    return;
+  }
+  setPassState(PassState::ML);
+  onBeginMLPass();
 }
 
 void CommandBuffer::endMLPass() {
-  _commands.push_back({CommandType::EndMLPass});
+  if (passState() != PassState::ML) {
+    RengLogger::logWarning("endMLPass called without active ML pass");
+    return;
+  }
+  onEndMLPass();
+  setPassState(PassState::None);
 }
 
 void CommandBuffer::dispatchML(uint32_t x, uint32_t y, uint32_t z) {
-  Command cmd{CommandType::Dispatch};
-  cmd.x = x;
-  cmd.y = y;
-  cmd.z = z;
-  _commands.push_back(cmd);
+  onDispatchML(x, y, z);
 }
 
 }  // namespace reng

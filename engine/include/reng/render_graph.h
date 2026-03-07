@@ -4,12 +4,15 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <memory>
 #include <vector>
 
 #include "reng/command_buffer.h"
 #include "reng/resources.h"
 
 namespace reng {
+
+class BackendDevice;
 
 enum class QueueType : uint8_t {
   Graphics,
@@ -94,11 +97,11 @@ class RenderGraph;
 
 class ResolvedFrame {
  public:
-  explicit ResolvedFrame(std::vector<CommandBuffer>&& buffers);
+  explicit ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers);
   void execute();
 
  private:
-  std::vector<CommandBuffer> _buffers;
+  std::vector<std::unique_ptr<CommandBuffer>> _buffers;
 };
 
 class RenderGraph {
@@ -126,7 +129,7 @@ class RenderGraph {
                        const std::function<void(MLPassBuilder&)>& record);
 
   CompileReport compile(const CompileOptions& options = {});
-  ResolvedFrame resolve();
+  ResolvedFrame resolve(BackendDevice& device);
 
  private:
   struct PassDesc {

@@ -44,7 +44,7 @@ void Engine::tick(float deltaSeconds) {
   _callbacks.onUpdateRender(_graph);
   _callbacks.onRender(_graph);
   _graph.compile();
-  _graph.resolve().execute();
+  _graph.resolve(*_device).execute();
   _swapchain->present();
 }
 

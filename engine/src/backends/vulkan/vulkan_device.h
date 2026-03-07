@@ -21,6 +21,7 @@
 #include "reng/backend.h"
 #include "reng/device.h"
 #include "vulkan_command_queue.h"
+#include "vulkan_command_buffer.h"
 
 
 namespace reng {
@@ -46,6 +47,8 @@ class VulkanDevice : public BackendDevice {
   CommandQueue* copyQueue(size_t index) const override {
     return index < _copyQueues.size() ? _copyQueues[index].get() : nullptr;
   }
+  std::unique_ptr<CommandBuffer> createCommandBuffer(
+      QueueType queueType) override;
   uint32_t graphicsQueueFamily() const { return _graphicsQueueFamily; }
 
  private:
