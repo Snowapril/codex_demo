@@ -29,9 +29,11 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       RengLogger::logError("Missing CAMetalLayer for Metal backend");
       return bundle;
     }
-    auto device = std::make_unique<MetalDevice>();
+    auto device = std::make_unique<MetalDevice>(desc.device);
     auto swapchain = std::make_unique<MetalSwapchain>(
-        layer, *device, device->queue(), desc.swapchain);
+        layer, *device,
+        static_cast<MetalCommandQueue*>(device->graphicsQueue()),
+        desc.swapchain);
     auto resources = std::make_unique<MetalResources>();
     bundle.device = std::move(device);
     bundle.swapchain = std::move(swapchain);
@@ -53,7 +55,10 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       return bundle;
     }
     auto swapchain = std::make_unique<VulkanSwapchain>();
-    if (!swapchain->init(*device, device->graphicsQueue(), desc.swapchain)) {
+    if (!swapchain->init(
+            *device,
+            static_cast<VulkanCommandQueue*>(device->graphicsQueue()),
+            desc.swapchain)) {
       RengLogger::logError("Failed to initialize Vulkan swapchain");
       device->shutdown();
       return bundle;

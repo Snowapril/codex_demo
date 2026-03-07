@@ -33,7 +33,10 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
     return bundle;
   }
   auto swapchain = std::make_unique<VulkanSwapchain>();
-  if (!swapchain->init(*device, device->graphicsQueue(), desc.swapchain)) {
+  if (!swapchain->init(
+          *device,
+          static_cast<VulkanCommandQueue*>(device->graphicsQueue()),
+          desc.swapchain)) {
     RengLogger::logError("Failed to initialize Vulkan swapchain");
     device->shutdown();
     return bundle;

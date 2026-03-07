@@ -8,17 +8,17 @@ namespace reng {
 
 class VulkanQueueTimeline : public QueueTimeline {
  public:
-  bool init(VkDevice device);
-  void shutdown(VkDevice device);
+  VulkanQueueTimeline(BackendDevice& device) : QueueTimeline(device) {}
+  ~VulkanQueueTimeline() override = default;
 
   VkSemaphore semaphore() const { return _semaphore; }
 
-  uint64_t prepareSignal(VkSubmitInfo& submitInfo,
-                         VkTimelineSemaphoreSubmitInfo& timelineInfo);
+ protected:
+  bool initInner() override final;
+  void shutdownInner() override final;
 
  private:
   VkSemaphore _semaphore = VK_NULL_HANDLE;
-  uint64_t _signalValue = 0;
 };
 
 }  // namespace reng

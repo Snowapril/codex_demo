@@ -1,6 +1,7 @@
 #include "vulkan_device.h"
 
 #include <array>
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -147,15 +148,15 @@ bool VulkanDevice::initializeDevice() {
   vkEnumeratePhysicalDevices(_instance, &count, devices.data());
   _physicalDevice = devices[0];
 
-  uint32_t queueCount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueCount,
+  uint32_t familyCount = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &familyCount,
                                            nullptr);
-  std::vector<VkQueueFamilyProperties> props(queueCount);
-  vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueCount,
+  std::vector<VkQueueFamilyProperties> props(familyCount);
+  vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &familyCount,
                                            props.data());
 
   bool found = false;
-  for (uint32_t i = 0; i < queueCount; ++i) {
+  for (uint32_t i = 0; i < familyCount; ++i) {
     VkBool32 presentSupport = VK_FALSE;
     vkGetPhysicalDeviceSurfaceSupportKHR(_physicalDevice, i, _surface,
                                          &presentSupport);
@@ -171,15 +172,34 @@ bool VulkanDevice::initializeDevice() {
     return false;
   }
 
-  float priority = 1.0f;
+  uint32_t desiredCopyCount = _desc.copyQueueCount > 0 ? _desc.copyQueueCount : 1;
+  uint32_t availableQueues = props[_graphicsQueueFamily].queueCount;
+  uint32_t queueCount = std::min(availableQueues, 1u + desiredCopyCount);
+  std::vector<float> priorities(queueCount, 1.0f);
+
   VkDeviceQueueCreateInfo queueInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
   queueInfo.queueFamilyIndex = _graphicsQueueFamily;
-  queueInfo.queueCount = 1;
-  queueInfo.pQueuePriorities = &priority;
+  queueInfo.queueCount = queueCount;
+  queueInfo.pQueuePriorities = priorities.data();
 
   std::vector<const char*> deviceExtensions =
       vulkan::gatherDeviceExtensions(_physicalDevice);
+
+  VkPhysicalDeviceTimelineSemaphoreFeatures timelineFeatures{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES};
+  VkPhysicalDeviceFeatures2 features2{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+  features2.pNext = &timelineFeatures;
+  vkGetPhysicalDeviceFeatures2(_physicalDevice, &features2);
+  if (!timelineFeatures.timelineSemaphore) {
+    RengLogger::logError("Timeline semaphore feature not supported");
+    shutdown();
+    return false;
+  }
+  timelineFeatures.timelineSemaphore = VK_TRUE;
+
   VkDeviceCreateInfo deviceInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+  deviceInfo.pNext = &timelineFeatures;
   deviceInfo.queueCreateInfoCount = 1;
   deviceInfo.pQueueCreateInfos = &queueInfo;
   deviceInfo.enabledExtensionCount =
@@ -193,11 +213,62 @@ bool VulkanDevice::initializeDevice() {
     return false;
   }
 
-  vkGetDeviceQueue(_device, _graphicsQueueFamily, 0, &_graphicsQueue);
+  VkQueue graphicsQueue = VK_NULL_HANDLE;
+  vkGetDeviceQueue(_device, _graphicsQueueFamily, 0, &graphicsQueue);
+  _graphicsQueue = std::make_unique<VulkanCommandQueue>();
+  _graphicsQueue->configure(graphicsQueue, _graphicsQueueFamily);
+  if (!_graphicsQueue->init(*this, QueueType::Graphics)) {
+    RengLogger::logError("Failed to initialize Vulkan graphics queue");
+    return false;
+  }
+
+  _computeQueue = std::make_unique<VulkanCommandQueue>();
+  _computeQueue->configure(graphicsQueue, _graphicsQueueFamily);
+  if (!_computeQueue->init(*this, QueueType::Compute)) {
+    RengLogger::logError("Failed to initialize Vulkan compute queue");
+  }
+
+  uint32_t copyCount = queueCount > 1 ? (queueCount - 1) : 0;
+  if (copyCount == 0) {
+    RengLogger::logWarning("Vulkan device provides a single queue; copy queues will share graphics queue");
+    auto queue = std::make_unique<VulkanCommandQueue>();
+    queue->configure(graphicsQueue, _graphicsQueueFamily);
+    if (queue->init(*this, QueueType::Transfer)) {
+      _copyQueues.push_back(std::move(queue));
+    }
+    return true;
+  }
+
+  _copyQueues.reserve(copyCount);
+  for (uint32_t i = 0; i < copyCount; ++i) {
+    VkQueue copyQueue = VK_NULL_HANDLE;
+    vkGetDeviceQueue(_device, _graphicsQueueFamily, i + 1, &copyQueue);
+    auto queue = std::make_unique<VulkanCommandQueue>();
+    queue->configure(copyQueue, _graphicsQueueFamily);
+    if (!queue->init(*this, QueueType::Transfer)) {
+      RengLogger::logError("Failed to initialize Vulkan copy queue");
+      continue;
+    }
+    _copyQueues.push_back(std::move(queue));
+  }
   return true;
 }
 
 void VulkanDevice::shutdown() {
+  for (auto& queue : _copyQueues) {
+    if (queue) {
+      queue->shutdown();
+    }
+  }
+  _copyQueues.clear();
+  if (_computeQueue) {
+    _computeQueue->shutdown();
+  }
+  if (_graphicsQueue) {
+    _graphicsQueue->shutdown();
+  }
+  _computeQueue.reset();
+  _graphicsQueue.reset();
   if (_device != VK_NULL_HANDLE) {
     vkDeviceWaitIdle(_device);
     vkDestroyDevice(_device, nullptr);

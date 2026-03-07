@@ -6,6 +6,7 @@
 
 #include "reng/app.h"
 #include "reng/backend.h"
+#include "vulkan_command_queue.h"
 #include "vulkan_device.h"
 
 namespace reng {
@@ -19,7 +20,7 @@ class VulkanSwapchain : public BackendSwapchain {
   VulkanSwapchain& operator=(VulkanSwapchain&&) = delete;
 
   bool init(VulkanDevice& device, const SwapchainDesc& desc);
-  bool init(VulkanDevice& device, VkQueue presentQueue,
+  bool init(VulkanDevice& device, VulkanCommandQueue* presentQueue,
             const SwapchainDesc& desc);
   bool recreate(const SwapchainDesc& desc) override;
   void shutdown(VkDevice device);
@@ -36,7 +37,7 @@ class VulkanSwapchain : public BackendSwapchain {
   void destroySwapchainResources(VkDevice device);
 
   VulkanDevice* _device = nullptr;
-  VkQueue _presentQueue = VK_NULL_HANDLE;
+  VulkanCommandQueue* _presentQueue = nullptr;
   VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
   VkFormat _format = VK_FORMAT_B8G8R8A8_UNORM;
   VkExtent2D _extent{};

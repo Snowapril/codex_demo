@@ -9,10 +9,11 @@
 namespace reng {
 
 bool VulkanSwapchain::init(VulkanDevice& device, const SwapchainDesc& desc) {
-  return init(device, device.graphicsQueue(), desc);
+  return init(device,
+              static_cast<VulkanCommandQueue*>(device.graphicsQueue()), desc);
 }
 
-bool VulkanSwapchain::init(VulkanDevice& device, VkQueue presentQueue,
+bool VulkanSwapchain::init(VulkanDevice& device, VulkanCommandQueue* presentQueue,
                            const SwapchainDesc& desc) {
   _device = &device;
   _presentQueue = presentQueue;
@@ -39,7 +40,7 @@ void VulkanSwapchain::present() {
     return;
   }
   VkDevice device = _device->device();
-  if (_presentQueue == VK_NULL_HANDLE) {
+  if (!_presentQueue || _presentQueue->queue() == VK_NULL_HANDLE) {
     RengLogger::logError("Missing Vulkan present queue");
     return;
   }
@@ -60,7 +61,7 @@ void VulkanSwapchain::present() {
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = &_swapchain;
   presentInfo.pImageIndices = &imageIndex;
-  vkQueuePresentKHR(_presentQueue, &presentInfo);
+  vkQueuePresentKHR(_presentQueue->queue(), &presentInfo);
 }
 
 PixelFormat VulkanSwapchain::colorFormat() const {

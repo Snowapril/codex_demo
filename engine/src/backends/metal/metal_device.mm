@@ -4,20 +4,49 @@
 
 namespace reng {
 
-MetalDevice::MetalDevice() {
+MetalDevice::MetalDevice(const DeviceDesc& desc) : _desc(desc) {
   _device = MTLCreateSystemDefaultDevice();
   if (!_device) {
     RengLogger::logError("MTLCreateSystemDefaultDevice returned nil");
     return;
   }
-  _queue = [_device newCommandQueue];
-  if (!_queue) {
-    RengLogger::logError("Failed to create Metal command queue");
+  _graphicsQueue = std::make_unique<MetalCommandQueue>();
+  if (!_graphicsQueue->init(*this, QueueType::Graphics)) {
+    RengLogger::logError("Failed to create Metal graphics queue");
+  }
+
+  _computeQueue = std::make_unique<MetalCommandQueue>();
+  if (!_computeQueue->init(*this, QueueType::Compute)) {
+    RengLogger::logError("Failed to create Metal compute queue");
+  }
+
+  uint32_t copyCount = _desc.copyQueueCount > 0 ? _desc.copyQueueCount : 1;
+  _copyQueues.reserve(copyCount);
+  for (uint32_t i = 0; i < copyCount; ++i) {
+    auto queue = std::make_unique<MetalCommandQueue>();
+    if (!queue->init(*this, QueueType::Transfer)) {
+      RengLogger::logError("Failed to create Metal copy queue");
+      break;
+    }
+    _copyQueues.push_back(std::move(queue));
   }
 }
 
 void MetalDevice::shutdown() {
-  _queue = nil;
+  for (auto& queue : _copyQueues) {
+    if (queue) {
+      queue->shutdown();
+    }
+  }
+  _copyQueues.clear();
+  if (_computeQueue) {
+    _computeQueue->shutdown();
+  }
+  if (_graphicsQueue) {
+    _graphicsQueue->shutdown();
+  }
+  _computeQueue.reset();
+  _graphicsQueue.reset();
   _device = nil;
 }
 

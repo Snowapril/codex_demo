@@ -7,6 +7,7 @@ namespace reng {
 
 struct DeviceDesc {
   bool enableValidation = false;
+  uint32_t copyQueueCount = 1;
 };
 
 class Device {

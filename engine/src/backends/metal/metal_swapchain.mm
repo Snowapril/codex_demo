@@ -8,7 +8,7 @@
 namespace reng {
 
 MetalSwapchain::MetalSwapchain(CAMetalLayer* layer, MetalDevice& device,
-                               id<MTLCommandQueue> presentQueue,
+                               MetalCommandQueue* presentQueue,
                                const SwapchainDesc& desc)
     : _layer(layer),
       _device(device),
@@ -48,12 +48,12 @@ void MetalSwapchain::present() {
     pass.colorAttachments[0].storeAction = MTLStoreActionStore;
     pass.colorAttachments[0].clearColor = MTLClearColorMake(0.05, 0.05, 0.08, 1.0);
 
-    if (!_presentQueue) {
+    if (!_presentQueue || !_presentQueue->queue()) {
       RengLogger::logError("Missing Metal present queue");
       return;
     }
 
-    id<MTLCommandBuffer> cmd = [_presentQueue commandBuffer];
+    id<MTLCommandBuffer> cmd = [_presentQueue->queue() commandBuffer];
     id<MTLRenderCommandEncoder> encoder =
         [cmd renderCommandEncoderWithDescriptor:pass];
     [encoder endEncoding];

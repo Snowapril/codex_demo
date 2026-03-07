@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstddef>
 #include <glm/vec2.hpp>
 
 #include "reng/app.h"
+#include "reng/command_queue.h"
 #include "reng/reng.h"
 
 namespace reng {
@@ -11,6 +13,10 @@ class BackendDevice {
  public:
   virtual ~BackendDevice() = default;
   virtual void shutdown() = 0;
+  virtual CommandQueue* graphicsQueue() const = 0;
+  virtual CommandQueue* computeQueue() const = 0;
+  virtual size_t copyQueueCount() const = 0;
+  virtual CommandQueue* copyQueue(size_t index) const = 0;
 };
 
 class BackendSwapchain {
