@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 #if defined(_MSC_VER)
 #define RENG_COMPILER_MSVC 1
 #elif defined(__clang__)
@@ -29,3 +31,5 @@
 #define reng_likely(x) (x)
 #define reng_unlikely(x) (x)
 #endif
+
+#define RENG_ASSERT(x, msg) assert((x) && (msg))

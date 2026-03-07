@@ -1,6 +1,7 @@
 #include "reng/command_buffer.h"
 
 #include "reng/logger.h"
+#include "reng/reng.h"
 
 namespace reng {
 
@@ -24,14 +25,20 @@ void CommandBuffer::endBlitPass() {
 
 void CommandBuffer::copyTexture(const ResourceId& src,
                                 const ResourceId& dst) {
+  RENG_ASSERT(passState() == PassState::Blit,
+              "copyTexture requires an active blit pass");
   onCopyTexture(src, dst);
 }
 
 void CommandBuffer::uploadBuffer(const ResourceId& buffer, size_t bytes) {
+  RENG_ASSERT(passState() == PassState::Blit,
+              "uploadBuffer requires an active blit pass");
   onUploadBuffer(buffer, bytes);
 }
 
 void CommandBuffer::uploadTexture(const ResourceId& texture, size_t bytes) {
+  RENG_ASSERT(passState() == PassState::Blit,
+              "uploadTexture requires an active blit pass");
   onUploadTexture(texture, bytes);
 }
 
@@ -55,6 +62,8 @@ void CommandBuffer::endRenderPass() {
 }
 
 void CommandBuffer::draw(uint32_t vertexCount, uint32_t instanceCount) {
+  RENG_ASSERT(passState() == PassState::Render,
+              "draw requires an active render pass");
   onDraw(vertexCount, instanceCount);
 }
 
@@ -79,6 +88,8 @@ void CommandBuffer::endComputePass() {
 }
 
 void CommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z) {
+  RENG_ASSERT(passState() == PassState::Compute,
+              "dispatch requires an active compute pass");
   onDispatch(x, y, z);
 }
 
@@ -101,6 +112,8 @@ void CommandBuffer::endMLPass() {
 }
 
 void CommandBuffer::dispatchML(uint32_t x, uint32_t y, uint32_t z) {
+  RENG_ASSERT(passState() == PassState::ML,
+              "dispatchML requires an active ML pass");
   onDispatchML(x, y, z);
 }
 
