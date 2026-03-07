@@ -42,7 +42,7 @@ class TriangleApp : public reng::AppCallbacks {
       1, reng::ResourceKind::Texture, "swapchain_color"};
 };
 
-int main() {
+int main(int argc, char** argv) {
   reng::RengLogger::init("logs/triangle.log");
   reng::RengLogger::logInfo("Launching triangle sample");
   reng::AppDesc desc;
@@ -57,5 +57,5 @@ int main() {
   desc.swapchain.colorFormat = reng::PixelFormat::Bgra8Unorm;
 
   TriangleApp app;
-  return reng::runApp(desc, app);
+  return reng::runApp(argc, argv, desc, app);
 }

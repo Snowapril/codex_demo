@@ -14,7 +14,7 @@
 
 ## Engine/Platform Boundary
 - App code must **not** include backend headers.
-- App supplies `PlatformContext` and `AppDesc.backend`; Engine creates backend internally.
+- App supplies `PlatformContext` and `AppDesc.backend`; Engine creates backend internally. CLI overrides for backend/validation are parsed in the engine so all executables share the same switch.
 - Swapchain is backend‑owned; app provides width/height/pixel format/present mode.
 - Runloop is centralized in `Engine`:
   - `onInput` → `onUpdateFrame` → `onUpdateRender` → `onRender`.

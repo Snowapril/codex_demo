@@ -133,6 +133,7 @@
 - Swapchain creation is backend‑owned; app provides width/height/pixel format and present mode.
 - macOS Vulkan uses KosmicKrisp: do not enable portability enumeration.
 - Runloop is centralized in Engine; callbacks: input → update frame → update render → render.
+- Engine parses command line args for backend/validation (for example `--backend=metal`, `--backend=vulkan`, `--validation`) so all executables share the same switch.
 
 ## 12) Logging
 - Use `RengLogger` (no `std::cerr`).

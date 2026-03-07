@@ -50,5 +50,6 @@ class AppCallbacks {
 };
 
 int runApp(const AppDesc& desc, AppCallbacks& callbacks);
+int runApp(int argc, char** argv, const AppDesc& desc, AppCallbacks& callbacks);
 
 }  // namespace reng
