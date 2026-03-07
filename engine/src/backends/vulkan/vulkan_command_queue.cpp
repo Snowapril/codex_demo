@@ -1,6 +1,7 @@
 #include "vulkan_command_queue.h"
 
 #include "reng/logger.h"
+#include "vulkan_command_buffer_pool.h"
 #include "vulkan_device.h"
 
 namespace reng {
@@ -13,6 +14,12 @@ void VulkanCommandQueue::configure(VkQueue queue, uint32_t familyIndex) {
 std::unique_ptr<QueueTimeline> VulkanCommandQueue::createTimeline(
     BackendDevice& device) {
   return std::make_unique<VulkanQueueTimeline>(device);
+}
+
+std::unique_ptr<CommandBufferPool> VulkanCommandQueue::createCommandBufferPool(
+    BackendDevice& device) {
+  return std::make_unique<VulkanCommandBufferPool>(
+      static_cast<VulkanDevice&>(device));
 }
 
 bool VulkanCommandQueue::initInner() {

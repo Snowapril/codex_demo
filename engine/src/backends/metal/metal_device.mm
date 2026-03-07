@@ -50,9 +50,4 @@ void MetalDevice::shutdown() {
   _device = nil;
 }
 
-std::unique_ptr<CommandBuffer> MetalDevice::createCommandBuffer(
-    QueueType queueType) {
-  return std::make_unique<MetalCommandBuffer>(*this, queueType);
-}
-
 }  // namespace reng

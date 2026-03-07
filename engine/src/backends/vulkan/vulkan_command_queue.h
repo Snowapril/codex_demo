@@ -23,6 +23,8 @@ class VulkanCommandQueue : public CommandQueue {
  private:
   std::unique_ptr<QueueTimeline> createTimeline(
       BackendDevice& device) override;
+  std::unique_ptr<CommandBufferPool> createCommandBufferPool(
+      BackendDevice& device) override;
   bool initInner() override;
   void shutdownInner() override;
 

@@ -13,18 +13,20 @@ class MetalCommandQueue : public CommandQueue {
  public:
   void shutdown() { CommandQueue::shutdown(); }
 
-  id<MTLCommandQueue> queue() const { return _queue; }
+  id<MTL4CommandQueue> queue() const { return _queue; }
   MetalQueueTimeline* metalTimeline() {
     return static_cast<MetalQueueTimeline*>(timeline());
   }
 
  private:
-  std::unique_ptr<QueueTimeline> createTimeline(
+ std::unique_ptr<QueueTimeline> createTimeline(
+      BackendDevice& device) override;
+  std::unique_ptr<CommandBufferPool> createCommandBufferPool(
       BackendDevice& device) override;
   bool initInner() override;
   void shutdownInner() override;
 
-  id<MTLCommandQueue> _queue = nil;
+  id<MTL4CommandQueue> _queue = nil;
 };
 
 }  // namespace reng

@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "reng/command_buffer_pool.h"
 #include "reng/queue_timeline.h"
 
 namespace reng {
@@ -19,6 +20,7 @@ class CommandQueue {
     if (!_timeline || !_timeline->init(type)) {
       return false;
     }
+    _commandBufferPool = createCommandBufferPool(device);
     return initInner();
   }
 
@@ -28,10 +30,12 @@ class CommandQueue {
       _timeline->shutdown();
       _timeline.reset();
     }
+    _commandBufferPool.reset();
     _device = nullptr;
   }
 
   QueueTimeline* timeline() const { return _timeline.get(); }
+  CommandBufferPool* commandBufferPool() const { return _commandBufferPool.get(); }
 
  protected:
   BackendDevice& device() const { return *_device; }
@@ -41,11 +45,14 @@ class CommandQueue {
       BackendDevice& device) = 0;
   virtual bool initInner() = 0;
   virtual void shutdownInner() = 0;
+  virtual std::unique_ptr<CommandBufferPool> createCommandBufferPool(
+      BackendDevice& device) = 0;
 
  private:
   BackendDevice* _device = nullptr;
   QueueType _type = QueueType::Graphics;
   std::unique_ptr<QueueTimeline> _timeline;
+  std::unique_ptr<CommandBufferPool> _commandBufferPool;
 };
 
 }  // namespace reng

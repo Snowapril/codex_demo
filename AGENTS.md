@@ -1,7 +1,7 @@
 # Rendering Engine Plan (Reference)
 
 ## Summary
-- C++20 core + Objective‑C++ Metal backend.
+- C++20 core + Objective‑C++ Metal backend (Metal4 APIs, e.g. `MTL4CommandQueue`).
 - macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp), iOS: Metal4 only, Windows: Vulkan only.
 - HLSL runtime compile via DXC: SPIR‑V for Vulkan, DXIL → Metal Shader Converter → metallib for Metal.
 - RenderGraph flow: **Build → Compile → Resolve → Execute**. Command buffers are created/recorded/executed from the graph.

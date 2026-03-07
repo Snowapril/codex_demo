@@ -219,14 +219,85 @@ CompileReport RenderGraph::compile(const CompileOptions& options) {
 }
 
 ResolvedFrame RenderGraph::resolve(BackendDevice& device) {
-  std::vector<std::unique_ptr<CommandBuffer>> buffers;
-  buffers.reserve(_passes.size());
+  if (_lastReport.passes.empty()) {
+    compile();
+  }
+
+  const size_t passCount = _passes.size();
+  std::vector<bool> graphicsPass(passCount, false);
   for (const auto& pass : _passes) {
-    auto cmd = device.createCommandBuffer(pass.preferredQueue);
+    if (pass.preferredQueue == QueueType::Graphics ||
+        pass.type == PassType::Render) {
+      graphicsPass[pass.handle.index] = true;
+    }
+  }
+
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (const auto& pass : _passes) {
+      if (graphicsPass[pass.handle.index]) {
+        continue;
+      }
+      if (pass.preferredQueue == QueueType::Compute ||
+          pass.preferredQueue == QueueType::Transfer) {
+        for (const auto& edge : _lastReport.dependencies) {
+          const bool linked =
+              (edge.from.index == pass.handle.index &&
+               graphicsPass[edge.to.index]) ||
+              (edge.to.index == pass.handle.index &&
+               graphicsPass[edge.from.index]);
+          if (linked) {
+            graphicsPass[pass.handle.index] = true;
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  auto selectQueue = [&](QueueType type) -> CommandQueue* {
+    if (type == QueueType::Graphics) {
+      return device.graphicsQueue();
+    }
+    if (type == QueueType::Compute) {
+      return device.computeQueue();
+    }
+    return device.copyQueue(0);
+  };
+
+  std::unordered_map<QueueType, std::unique_ptr<CommandBuffer>> queueBuffers;
+  queueBuffers.reserve(3);
+
+  for (const auto& pass : _passes) {
+    QueueType assignedQueue = QueueType::Graphics;
+    if (!graphicsPass[pass.handle.index] &&
+        (pass.preferredQueue == QueueType::Compute ||
+         pass.preferredQueue == QueueType::Transfer)) {
+      assignedQueue = pass.preferredQueue;
+    }
+
+    auto& cmd = queueBuffers[assignedQueue];
+    if (!cmd) {
+      CommandQueue* queue = selectQueue(assignedQueue);
+      if (!queue || !queue->commandBufferPool()) {
+        continue;
+      }
+      cmd = queue->commandBufferPool()->allocate(assignedQueue);
+    }
+
     if (pass.recordFn) {
       pass.recordFn(*cmd);
     }
-    buffers.push_back(std::move(cmd));
+  }
+
+  std::vector<std::unique_ptr<CommandBuffer>> buffers;
+  buffers.reserve(queueBuffers.size());
+  for (auto& entry : queueBuffers) {
+    if (entry.second) {
+      buffers.push_back(std::move(entry.second));
+    }
   }
   return ResolvedFrame(std::move(buffers));
 }

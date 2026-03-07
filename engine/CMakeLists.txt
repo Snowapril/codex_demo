@@ -42,6 +42,7 @@ if(APPLE)
     src/platform/backend_factory_macos.mm
     src/backends/metal/metal_command_queue.mm
     src/backends/metal/metal_command_buffer.mm
+    src/backends/metal/metal_command_buffer_pool.mm
     src/backends/metal/metal_device.mm
     src/backends/metal/metal_queue_timeline.mm
     src/backends/metal/metal_resources.mm
@@ -64,6 +65,7 @@ endif()
 if(APPLE AND RENG_ENABLE_VULKAN)
   target_sources(reng_core PRIVATE
     src/backends/vulkan/vulkan_command_buffer.cpp
+    src/backends/vulkan/vulkan_command_buffer_pool.cpp
     src/backends/vulkan/vulkan_command_queue.cpp
     src/backends/vulkan/vulkan_device.cpp
     src/backends/vulkan/vulkan_queue_timeline.cpp
@@ -80,6 +82,7 @@ if(WIN32)
     src/platform/windows_app.cpp
     src/platform/backend_factory_windows.cpp
     src/backends/vulkan/vulkan_command_buffer.cpp
+    src/backends/vulkan/vulkan_command_buffer_pool.cpp
     src/backends/vulkan/vulkan_command_queue.cpp
     src/backends/vulkan/vulkan_device.cpp
     src/backends/vulkan/vulkan_queue_timeline.cpp

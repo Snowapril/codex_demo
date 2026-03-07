@@ -1,5 +1,6 @@
 #include "metal_command_queue.h"
 
+#include "metal_command_buffer_pool.h"
 #include "metal_device.h"
 #include "reng/logger.h"
 
@@ -10,6 +11,12 @@ std::unique_ptr<QueueTimeline> MetalCommandQueue::createTimeline(
   return std::make_unique<MetalQueueTimeline>(device);
 }
 
+std::unique_ptr<CommandBufferPool> MetalCommandQueue::createCommandBufferPool(
+    BackendDevice& device) {
+  return std::make_unique<MetalCommandBufferPool>(
+      static_cast<MetalDevice&>(device));
+}
+
 bool MetalCommandQueue::initInner() {
   id<MTLDevice> mtlDevice = static_cast<MetalDevice&>(device()).device();
   if (!mtlDevice) {
@@ -17,7 +24,7 @@ bool MetalCommandQueue::initInner() {
     return false;
   }
 
-  _queue = [mtlDevice newCommandQueue];
+  _queue = [mtlDevice newMTL4CommandQueue];
   if (!_queue) {
     RengLogger::logError("Failed to create Metal command queue");
     return false;

@@ -284,9 +284,4 @@ void VulkanDevice::shutdown() {
   }
 }
 
-std::unique_ptr<CommandBuffer> VulkanDevice::createCommandBuffer(
-    QueueType queueType) {
-  return std::make_unique<VulkanCommandBuffer>(*this, queueType);
-}
-
 }  // namespace reng

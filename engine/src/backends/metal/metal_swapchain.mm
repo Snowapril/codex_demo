@@ -41,8 +41,7 @@ void MetalSwapchain::present() {
       return;
     }
 
-    MTLRenderPassDescriptor* pass =
-        [MTLRenderPassDescriptor renderPassDescriptor];
+    MTL4RenderPassDescriptor* pass = [MTL4RenderPassDescriptor new];
     pass.colorAttachments[0].texture = drawable.texture;
     pass.colorAttachments[0].loadAction = MTLLoadActionClear;
     pass.colorAttachments[0].storeAction = MTLStoreActionStore;
@@ -53,12 +52,21 @@ void MetalSwapchain::present() {
       return;
     }
 
-    id<MTLCommandBuffer> cmd = [_presentQueue->queue() commandBuffer];
-    id<MTLRenderCommandEncoder> encoder =
+    id<MTL4CommandBuffer> cmd = [_device.device() newCommandBuffer];
+    id<MTL4CommandAllocator> allocator = [_device.device() newCommandAllocator];
+    if (!cmd || !allocator) {
+      RengLogger::logError("Failed to create Metal4 command buffer/allocator");
+      return;
+    }
+    [cmd beginCommandBufferWithAllocator:allocator];
+    id<MTL4RenderCommandEncoder> encoder =
         [cmd renderCommandEncoderWithDescriptor:pass];
     [encoder endEncoding];
-    [cmd presentDrawable:drawable];
-    [cmd commit];
+    [cmd endCommandBuffer];
+    id<MTL4CommandBuffer> buffers[] = {cmd};
+    [_presentQueue->queue() commit:buffers count:1];
+    [_presentQueue->queue() signalDrawable:drawable];
+    [drawable present];
   }
 }
 

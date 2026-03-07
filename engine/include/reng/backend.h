@@ -20,8 +20,6 @@ class BackendDevice {
   virtual CommandQueue* computeQueue() const = 0;
   virtual size_t copyQueueCount() const = 0;
   virtual CommandQueue* copyQueue(size_t index) const = 0;
-  virtual std::unique_ptr<CommandBuffer> createCommandBuffer(
-      QueueType queueType) = 0;
 };
 
 class BackendSwapchain {
