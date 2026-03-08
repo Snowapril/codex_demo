@@ -23,6 +23,7 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
   }
 
   if (desc.backend == Backend::Metal) {
+    RengLogger::logInfo("macOS backend: Metal selected");
     CAMetalLayer* layer =
         (__bridge CAMetalLayer*)context.macos.metalLayer;
     if (!layer) {
@@ -43,6 +44,7 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
 
   if (desc.backend == Backend::Vulkan) {
 #if defined(RENG_ENABLE_VULKAN)
+    RengLogger::logInfo("macOS backend: Vulkan selected");
     CAMetalLayer* layer =
         (__bridge CAMetalLayer*)context.macos.metalLayer;
     if (!layer) {
@@ -50,10 +52,12 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       return bundle;
     }
     auto device = std::make_unique<VulkanDevice>(desc.title, desc.device);
+    RengLogger::logInfo("Initializing Vulkan device");
     if (!device->initDevice((__bridge void*)layer)) {
       RengLogger::logError("Failed to initialize Vulkan device");
       return bundle;
     }
+    RengLogger::logInfo("Vulkan device initialized");
     auto swapchain = std::make_unique<VulkanSwapchain>();
     if (!swapchain->init(
             *device,
@@ -63,6 +67,7 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       device->shutdown();
       return bundle;
     }
+    RengLogger::logInfo("Vulkan swapchain initialized");
     auto resources = std::make_unique<VulkanResources>();
     bundle.device = std::move(device);
     bundle.swapchain = std::move(swapchain);

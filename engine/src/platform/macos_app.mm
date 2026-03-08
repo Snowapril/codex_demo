@@ -12,6 +12,7 @@
 #include "backends/metal/metal_swapchain.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, CAMetalDisplayLinkDelegate>
+- (void)startIfNeeded;
 @end
 
 @implementation AppDelegate {
@@ -23,21 +24,38 @@
   reng::AppCallbacks* _callbacks;
   reng::AppDesc _desc;
   CFTimeInterval _lastTime;
+  bool _didStart;
+}
+
+- (void)dealloc {
+  reng::RengLogger::logInfo("AppDelegate dealloc");
 }
 
 - (instancetype)initWithDesc:(const reng::AppDesc&)desc
                    callbacks:(reng::AppCallbacks*)callbacks {
   self = [super init];
   if (self) {
+    reng::RengLogger::logInfo("AppDelegate initWithDesc");
     _callbacks = callbacks;
     _desc = desc;
     _lastTime = CACurrentMediaTime();
+    _didStart = false;
   }
   return self;
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
   reng::RengLogger::logInfo("Starting macOS app");
+  reng::RengLogger::logInfo("applicationDidFinishLaunching enter");
+  [self startIfNeeded];
+}
+
+- (void)startIfNeeded {
+  if (_didStart) {
+    return;
+  }
+  _didStart = true;
+  reng::RengLogger::logInfo("AppDelegate start");
   NSRect frame =
       NSMakeRect(100, 100, _desc.swapchain.width, _desc.swapchain.height);
   _window = [[NSWindow alloc]
@@ -63,7 +81,9 @@
   context.platform = reng::PlatformKind::MacOS;
   context.macos.nsWindow = (__bridge void*)_window;
   context.macos.metalLayer = (__bridge void*)_layer;
+  reng::RengLogger::logInfo("Engine::create call from macOS app");
   _engine = reng::Engine::create(_desc, *_callbacks, context);
+  reng::RengLogger::logInfo("Engine::create returned");
   if (!_engine) {
     reng::RengLogger::logError("Failed to initialize engine");
     [[NSApplication sharedApplication] terminate:nil];
@@ -147,6 +167,7 @@
 namespace reng {
 
 int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
+  RengLogger::logInfo("macOS runAppPlatform enter");
   if (desc.backend != Backend::Metal && desc.backend != Backend::Vulkan) {
     RengLogger::logError("Requested backend not supported on macOS");
     return 1;
@@ -161,10 +182,20 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
     NSApplication* app = [NSApplication sharedApplication];
     AppDelegate* delegate = [[AppDelegate alloc] initWithDesc:desc
                                                     callbacks:&callbacks];
+    RengLogger::logInfo("Setting NSApplication delegate");
     app.delegate = delegate;
     [app setActivationPolicy:NSApplicationActivationPolicyRegular];
     [app activateIgnoringOtherApps:YES];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+                     RengLogger::logInfo("Main runloop heartbeat");
+                   });
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [delegate startIfNeeded];
+    });
+    RengLogger::logInfo("NSApplication run start");
     [app run];
+    RengLogger::logInfo("NSApplication run end");
   }
   return 0;
 }

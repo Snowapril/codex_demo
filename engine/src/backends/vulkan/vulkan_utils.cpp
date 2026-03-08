@@ -42,12 +42,19 @@ std::vector<const char*> gatherDeviceExtensions(VkPhysicalDevice device) {
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
   std::vector<VkExtensionProperties> props(count);
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, props.data());
+  bool hasDynamicRendering = false;
   for (const auto& prop : props) {
     if (std::string(prop.extensionName) ==
         VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) {
       extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-      break;
     }
+    if (std::string(prop.extensionName) ==
+        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) {
+      hasDynamicRendering = true;
+    }
+  }
+  if (hasDynamicRendering) {
+    extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
   }
   return extensions;
 }

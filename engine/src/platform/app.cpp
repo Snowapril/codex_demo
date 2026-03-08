@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "reng/logger.h"
+
 namespace reng {
 
 int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks);
@@ -56,7 +58,11 @@ int runApp(const AppDesc& desc, AppCallbacks& callbacks) {
 
 int runApp(int argc, char** argv, const AppDesc& desc,
            AppCallbacks& callbacks) {
-  return runAppPlatform(applyCommandLine(desc, argc, argv), callbacks);
+  AppDesc resolved = applyCommandLine(desc, argc, argv);
+  RengLogger::logInfo("App backend: {}, validation: {}",
+                      resolved.backend == Backend::Metal ? "metal" : "vulkan",
+                      resolved.device.enableValidation ? "on" : "off");
+  return runAppPlatform(resolved, callbacks);
 }
 
 }  // namespace reng

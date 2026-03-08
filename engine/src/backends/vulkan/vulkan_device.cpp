@@ -2,6 +2,7 @@
 
 #include <array>
 #include <algorithm>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -16,9 +17,50 @@
 #include <vulkan/vulkan_core.h>
 #endif
 
+
 namespace reng {
 
 namespace {
+
+#if defined(RENG_ENABLE_VULKAN)
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+    VkDebugUtilsMessageTypeFlagsEXT type,
+    const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
+    void* userData) {
+  (void)type;
+  (void)userData;
+  if (!callbackData || !callbackData->pMessage) {
+    return VK_FALSE;
+  }
+
+  if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+    RengLogger::logError("Vulkan validation: {}", callbackData->pMessage);
+  } else if (severity &
+             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+    RengLogger::logWarning("Vulkan validation: {}", callbackData->pMessage);
+  } else if (severity &
+             VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+    RengLogger::logInfo("Vulkan validation: {}", callbackData->pMessage);
+  } else {
+    RengLogger::logVerbose("Vulkan validation: {}", callbackData->pMessage);
+  }
+  return VK_FALSE;
+}
+#endif
+
+bool hasInstanceExtension(const char* name) {
+  uint32_t count = 0;
+  vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+  std::vector<VkExtensionProperties> props(count);
+  vkEnumerateInstanceExtensionProperties(nullptr, &count, props.data());
+  for (const auto& prop : props) {
+    if (name == std::string(prop.extensionName)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 #if defined(_WIN32)
 std::vector<const char*> gatherInstanceExtensions() {
@@ -58,12 +100,23 @@ std::vector<const char*> gatherInstanceExtensions() {
 }  // namespace
 
 bool VulkanDevice::initDevice(void* param1, void* param2) {
+  RengLogger::logInfo("Vulkan init: validation {}", _desc.enableValidation ? "on" : "off");
+  uint32_t instanceVersion = VK_API_VERSION_1_0;
+  auto enumerateVersion = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(
+      vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion"));
+  if (enumerateVersion) {
+    enumerateVersion(&instanceVersion);
+  }
+  uint32_t requestedVersion = VK_API_VERSION_1_3;
+  uint32_t apiVersion =
+      instanceVersion < requestedVersion ? instanceVersion : requestedVersion;
+
   VkApplicationInfo appInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
   appInfo.pApplicationName = _appName ? _appName : "reng";
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.pEngineName = "reng";
   appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
-  appInfo.apiVersion = VK_API_VERSION_1_2;
+  appInfo.apiVersion = apiVersion;
 
   std::vector<const char*> extensions = gatherInstanceExtensions();
   if (extensions.empty()) {
@@ -73,6 +126,23 @@ bool VulkanDevice::initDevice(void* param1, void* param2) {
   std::vector<const char*> validationLayers;
   if (_desc.enableValidation) {
     validationLayers = vulkan::gatherValidationLayers();
+    if (hasInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    } else {
+      RengLogger::logWarning(
+          "Vulkan debug utils extension not available");
+    }
+    if (validationLayers.empty()) {
+      RengLogger::logWarning(
+          "Vulkan validation enabled but no validation layers found");
+    } else {
+      for (const auto* layer : validationLayers) {
+        RengLogger::logInfo("Vulkan validation layer: {}", layer);
+      }
+    }
+    for (const auto* ext : extensions) {
+      RengLogger::logVerbose("Vulkan instance extension: {}", ext);
+    }
   }
 
   VkInstanceCreateInfo createInfo{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
@@ -87,6 +157,38 @@ bool VulkanDevice::initDevice(void* param1, void* param2) {
   if (!vulkan::check(vkCreateInstance(&createInfo, nullptr, &_instance),
                      "vkCreateInstance failed")) {
     return false;
+  }
+
+  if (_desc.enableValidation) {
+    VkDebugUtilsMessengerCreateInfoEXT debugInfo{
+        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    debugInfo.messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debugInfo.messageType =
+        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debugInfo.pfnUserCallback = debugCallback;
+
+    auto createDebugMessenger =
+        reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+            vkGetInstanceProcAddr(_instance, "vkCreateDebugUtilsMessengerEXT"));
+    if (createDebugMessenger) {
+      if (!vulkan::check(
+              createDebugMessenger(_instance, &debugInfo, nullptr,
+                                   &_debugMessenger),
+              "vkCreateDebugUtilsMessengerEXT failed")) {
+        _debugMessenger = VK_NULL_HANDLE;
+      } else {
+        RengLogger::logInfo("Vulkan debug messenger created");
+      }
+    } else {
+      RengLogger::logWarning(
+          "Vulkan debug utils extension not available");
+    }
   }
 
 #if defined(_WIN32)
@@ -112,8 +214,7 @@ bool VulkanDevice::initDevice(void* param1, void* param2) {
     shutdown();
     return false;
   }
-  RengLogger::logInfo(
-      "macOS Vulkan instance created without portability enumeration; expecting KosmicKrisp");
+  RengLogger::logInfo("macOS Vulkan instance created (KosmicKrisp)");
 
   VkMetalSurfaceCreateInfoEXT surfaceInfo{
       VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT};
@@ -140,6 +241,12 @@ bool VulkanDevice::initializeDevice() {
   uint32_t count = 0;
   vkEnumeratePhysicalDevices(_instance, &count, nullptr);
   if (count == 0) {
+    const char* icdEnv = getenv("VK_ICD_FILENAMES");
+    if (icdEnv && icdEnv[0] != '\0') {
+      RengLogger::logWarning("VK_ICD_FILENAMES={}", icdEnv);
+    } else {
+      RengLogger::logWarning("VK_ICD_FILENAMES not set");
+    }
     RengLogger::logError("No Vulkan physical devices found");
     shutdown();
     return false;
@@ -185,21 +292,30 @@ bool VulkanDevice::initializeDevice() {
   std::vector<const char*> deviceExtensions =
       vulkan::gatherDeviceExtensions(_physicalDevice);
 
+  VkPhysicalDeviceDynamicRenderingFeatures dynamicFeatures{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES};
   VkPhysicalDeviceTimelineSemaphoreFeatures timelineFeatures{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES};
   VkPhysicalDeviceFeatures2 features2{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-  features2.pNext = &timelineFeatures;
+  features2.pNext = &dynamicFeatures;
+  dynamicFeatures.pNext = &timelineFeatures;
   vkGetPhysicalDeviceFeatures2(_physicalDevice, &features2);
   if (!timelineFeatures.timelineSemaphore) {
     RengLogger::logError("Timeline semaphore feature not supported");
     shutdown();
     return false;
   }
+  if (!dynamicFeatures.dynamicRendering) {
+    RengLogger::logError("Dynamic rendering feature not supported");
+    shutdown();
+    return false;
+  }
   timelineFeatures.timelineSemaphore = VK_TRUE;
+  dynamicFeatures.dynamicRendering = VK_TRUE;
 
   VkDeviceCreateInfo deviceInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
-  deviceInfo.pNext = &timelineFeatures;
+  deviceInfo.pNext = &dynamicFeatures;
   deviceInfo.queueCreateInfoCount = 1;
   deviceInfo.pQueueCreateInfos = &queueInfo;
   deviceInfo.enabledExtensionCount =
@@ -279,6 +395,16 @@ void VulkanDevice::shutdown() {
     _surface = VK_NULL_HANDLE;
   }
   if (_instance != VK_NULL_HANDLE) {
+    if (_debugMessenger != VK_NULL_HANDLE) {
+      auto destroyDebugMessenger =
+          reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+              vkGetInstanceProcAddr(_instance,
+                                    "vkDestroyDebugUtilsMessengerEXT"));
+      if (destroyDebugMessenger) {
+        destroyDebugMessenger(_instance, _debugMessenger, nullptr);
+      }
+      _debugMessenger = VK_NULL_HANDLE;
+    }
     vkDestroyInstance(_instance, nullptr);
     _instance = VK_NULL_HANDLE;
   }

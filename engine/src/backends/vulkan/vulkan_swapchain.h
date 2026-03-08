@@ -34,6 +34,24 @@ class VulkanSwapchain : public BackendSwapchain {
   VkSwapchainKHR swapchain() const { return _swapchain; }
   VkFormat format() const { return _format; }
   const std::vector<VkImageView>& imageViews() const { return _imageViews; }
+  VkImage currentImage() const {
+    if (_images.empty()) {
+      return VK_NULL_HANDLE;
+    }
+    return _images[_acquiredImageIndex];
+  }
+  VkImageLayout currentImageLayout() const {
+    if (_imageLayouts.empty()) {
+      return VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    return _imageLayouts[_acquiredImageIndex];
+  }
+  void setCurrentImageLayout(VkImageLayout layout) {
+    if (_imageLayouts.empty()) {
+      return;
+    }
+    _imageLayouts[_acquiredImageIndex] = layout;
+  }
   VkImageView currentImageView() const {
     if (_imageViews.empty()) {
       return VK_NULL_HANDLE;
@@ -52,6 +70,7 @@ class VulkanSwapchain : public BackendSwapchain {
   VkExtent2D _extent{};
   std::vector<VkImage> _images;
   std::vector<VkImageView> _imageViews;
+  std::vector<VkImageLayout> _imageLayouts;
   VkFence _inFlight = VK_NULL_HANDLE;
   uint32_t _acquiredImageIndex = 0;
   bool _hasAcquiredImage = false;

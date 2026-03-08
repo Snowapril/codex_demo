@@ -36,16 +36,16 @@ class VulkanCommandBuffer : public CommandBuffer {
 
  private:
   bool ensureRecording();
-  void destroyRenderTargets();
+  void transitionSwapchainImage(VkImage image, VkImageLayout oldLayout,
+                                VkImageLayout newLayout);
 
   VulkanDevice& _device;
   VulkanCommandQueue& _queue;
   QueueType _queueType = QueueType::Graphics;
   VkCommandPool _commandPool = VK_NULL_HANDLE;
   VkCommandBuffer _commandBuffer = VK_NULL_HANDLE;
-  VkRenderPass _renderPass = VK_NULL_HANDLE;
-  VkFramebuffer _framebuffer = VK_NULL_HANDLE;
   bool _recording = false;
+  bool _renderingActive = false;
 };
 
 }  // namespace reng

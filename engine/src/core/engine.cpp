@@ -12,11 +12,13 @@ Engine::Engine(const AppDesc& desc, AppCallbacks& callbacks)
 std::unique_ptr<Engine> Engine::create(const AppDesc& desc,
                                        AppCallbacks& callbacks,
                                        const PlatformContext& context) {
+  RengLogger::logInfo("Engine::create start");
   std::unique_ptr<Engine> engine(new Engine(desc, callbacks));
   if (!engine->initBackend(context)) {
     RengLogger::logError("Failed to initialize backend");
     return nullptr;
   }
+  RengLogger::logInfo("Engine::create backend initialized");
 
   if (!engine->_callbacks.onInit(*engine)) {
     RengLogger::logError("App initialization failed");
@@ -26,14 +28,17 @@ std::unique_ptr<Engine> Engine::create(const AppDesc& desc,
 }
 
 bool Engine::initBackend(const PlatformContext& context) {
+  RengLogger::logInfo("Engine::initBackend start");
   BackendBundle bundle = createBackend(_desc, context);
   _device = std::move(bundle.device);
   _swapchain = std::move(bundle.swapchain);
   _resources = std::move(bundle.resources);
   if (!_device || !_swapchain || !_resources) {
+    RengLogger::logError("Engine::initBackend bundle incomplete");
     return false;
   }
   _resourcePool = std::make_unique<ResourcePoolImpl>(*_resources);
+  RengLogger::logInfo("Engine::initBackend done");
   return true;
 }
 

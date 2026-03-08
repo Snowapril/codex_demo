@@ -70,7 +70,6 @@ ResourceId VulkanSwapchain::acquireNextImage() {
     return _swapchainResource;
   }
   VkDevice device = _device->device();
-  vkWaitForFences(device, 1, &_inFlight, VK_TRUE, UINT64_MAX);
   vkResetFences(device, 1, &_inFlight);
 
   if (!vulkan::check(vkAcquireNextImageKHR(device, _swapchain, UINT64_MAX,
@@ -80,6 +79,7 @@ ResourceId VulkanSwapchain::acquireNextImage() {
     _hasAcquiredImage = false;
     return _swapchainResource;
   }
+  vkWaitForFences(device, 1, &_inFlight, VK_TRUE, UINT64_MAX);
   _hasAcquiredImage = true;
   return _swapchainResource;
 }
@@ -226,6 +226,7 @@ bool VulkanSwapchain::createSwapchainResources(const SwapchainDesc& desc) {
   }
 
   _imageViews.resize(_images.size());
+  _imageLayouts.assign(_images.size(), VK_IMAGE_LAYOUT_UNDEFINED);
   for (size_t i = 0; i < _images.size(); ++i) {
     VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     viewInfo.image = _images[i];

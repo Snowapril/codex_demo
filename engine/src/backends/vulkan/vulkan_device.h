@@ -57,6 +57,7 @@ class VulkanDevice : public BackendDevice {
   VkSurfaceKHR _surface = VK_NULL_HANDLE;
   VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
   VkDevice _device = VK_NULL_HANDLE;
+  VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
   uint32_t _graphicsQueueFamily = 0;
   std::unique_ptr<VulkanCommandQueue> _graphicsQueue;
   std::unique_ptr<VulkanCommandQueue> _computeQueue;

@@ -61,7 +61,6 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanDevice& device,
 
 VulkanCommandBuffer::~VulkanCommandBuffer() {
   VkDevice device = _device.device();
-  destroyRenderTargets();
   if (_commandPool != VK_NULL_HANDLE) {
     vkDestroyCommandPool(device, _commandPool, nullptr);
     _commandPool = VK_NULL_HANDLE;
@@ -131,16 +130,40 @@ bool VulkanCommandBuffer::ensureRecording() {
   return true;
 }
 
-void VulkanCommandBuffer::destroyRenderTargets() {
-  VkDevice device = _device.device();
-  if (_framebuffer != VK_NULL_HANDLE) {
-    vkDestroyFramebuffer(device, _framebuffer, nullptr);
-    _framebuffer = VK_NULL_HANDLE;
+void VulkanCommandBuffer::transitionSwapchainImage(
+    VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
+  if (image == VK_NULL_HANDLE || oldLayout == newLayout) {
+    return;
   }
-  if (_renderPass != VK_NULL_HANDLE) {
-    vkDestroyRenderPass(device, _renderPass, nullptr);
-    _renderPass = VK_NULL_HANDLE;
+
+  VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+  barrier.oldLayout = oldLayout;
+  barrier.newLayout = newLayout;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image = image;
+  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  barrier.subresourceRange.baseMipLevel = 0;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.baseArrayLayer = 0;
+  barrier.subresourceRange.layerCount = 1;
+
+  VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+  VkPipelineStageFlags dstStage =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  barrier.srcAccessMask = 0;
+  barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+  if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
+      newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+    barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barrier.dstAccessMask = 0;
+    srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dstStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
   }
+
+  vkCmdPipelineBarrier(_commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0,
+                       nullptr, 1, &barrier);
 }
 
 void VulkanCommandBuffer::onBeginBlitPass() {
@@ -176,8 +199,6 @@ void VulkanCommandBuffer::onBeginRenderPass(
     return;
   }
 
-  destroyRenderTargets();
-
   VulkanSwapchain* swap = nullptr;
   if (swapchain()) {
     swap = static_cast<VulkanSwapchain*>(swapchain());
@@ -187,10 +208,8 @@ void VulkanCommandBuffer::onBeginRenderPass(
     return;
   }
 
-  std::vector<VkAttachmentDescription> attachments;
-  std::vector<VkAttachmentReference> references;
+  std::vector<VkRenderingAttachmentInfo> colorAttachments;
   std::vector<VkClearValue> clearValues;
-  std::vector<VkImageView> views;
 
   for (const auto& attachment : framebuffer.colorAttachments) {
     if (attachment.resource != swap->swapchainResourceId()) {
@@ -198,22 +217,6 @@ void VulkanCommandBuffer::onBeginRenderPass(
           "Vulkan render pass supports only swapchain color attachment");
       continue;
     }
-
-    VkAttachmentDescription desc{};
-    desc.format = swap->format();
-    desc.samples = VK_SAMPLE_COUNT_1_BIT;
-    desc.loadOp = toVkLoadOp(attachment.loadAction);
-    desc.storeOp = toVkStoreOp(attachment.storeAction);
-    desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    attachments.push_back(desc);
-
-    VkAttachmentReference ref{};
-    ref.attachment = static_cast<uint32_t>(references.size());
-    ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    references.push_back(ref);
 
     VkClearValue clear{};
     clear.color.float32[0] = attachment.clearColor.r;
@@ -227,67 +230,56 @@ void VulkanCommandBuffer::onBeginRenderPass(
       RengLogger::logWarning("Vulkan swapchain image view unavailable");
       continue;
     }
-    views.push_back(view);
+    VkRenderingAttachmentInfo colorInfo{
+        VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
+    colorInfo.imageView = view;
+    colorInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorInfo.loadOp = toVkLoadOp(attachment.loadAction);
+    colorInfo.storeOp = toVkStoreOp(attachment.storeAction);
+    colorInfo.clearValue = clear;
+    colorAttachments.push_back(colorInfo);
   }
 
-  if (attachments.empty()) {
+  if (colorAttachments.empty()) {
     RengLogger::logWarning("Vulkan render pass has no attachments to render");
     return;
   }
 
-  VkSubpassDescription subpass{};
-  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpass.colorAttachmentCount = static_cast<uint32_t>(references.size());
-  subpass.pColorAttachments = references.data();
+  VkImage swapImage = swap->currentImage();
+  VkImageLayout currentLayout = swap->currentImageLayout();
+  transitionSwapchainImage(swapImage, currentLayout,
+                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  swap->setCurrentImageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-  VkRenderPassCreateInfo renderPassInfo{
-      VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpass;
-
-  if (!vulkan::check(
-          vkCreateRenderPass(_device.device(), &renderPassInfo, nullptr,
-                             &_renderPass),
-          "vkCreateRenderPass failed")) {
-    return;
-  }
-
-  VkFramebufferCreateInfo framebufferInfo{
-      VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-  framebufferInfo.renderPass = _renderPass;
-  framebufferInfo.attachmentCount = static_cast<uint32_t>(views.size());
-  framebufferInfo.pAttachments = views.data();
-  framebufferInfo.width = swap->width();
-  framebufferInfo.height = swap->height();
-  framebufferInfo.layers = 1;
-
-  if (!vulkan::check(
-          vkCreateFramebuffer(_device.device(), &framebufferInfo, nullptr,
-                              &_framebuffer),
-          "vkCreateFramebuffer failed")) {
-    return;
-  }
-
-  VkRenderPassBeginInfo beginInfo{
-      VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-  beginInfo.renderPass = _renderPass;
-  beginInfo.framebuffer = _framebuffer;
-  beginInfo.renderArea.offset = {0, 0};
-  beginInfo.renderArea.extent = {swap->width(), swap->height()};
-  beginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-  beginInfo.pClearValues = clearValues.data();
-  vkCmdBeginRenderPass(_commandBuffer, &beginInfo,
-                       VK_SUBPASS_CONTENTS_INLINE);
+  VkRenderingInfo renderingInfo{VK_STRUCTURE_TYPE_RENDERING_INFO};
+  renderingInfo.renderArea.offset = {0, 0};
+  renderingInfo.renderArea.extent = {swap->width(), swap->height()};
+  renderingInfo.layerCount = 1;
+  renderingInfo.colorAttachmentCount =
+      static_cast<uint32_t>(colorAttachments.size());
+  renderingInfo.pColorAttachments = colorAttachments.data();
+  vkCmdBeginRendering(_commandBuffer, &renderingInfo);
+  _renderingActive = true;
 }
 
 void VulkanCommandBuffer::onEndRenderPass() {
-  if (_commandBuffer == VK_NULL_HANDLE || _renderPass == VK_NULL_HANDLE) {
+  if (_commandBuffer == VK_NULL_HANDLE) {
     return;
   }
-  vkCmdEndRenderPass(_commandBuffer);
-  destroyRenderTargets();
+  if (_renderingActive) {
+    vkCmdEndRendering(_commandBuffer);
+    _renderingActive = false;
+  }
+  VulkanSwapchain* swap = nullptr;
+  if (swapchain()) {
+    swap = static_cast<VulkanSwapchain*>(swapchain());
+  }
+  if (swap) {
+    transitionSwapchainImage(swap->currentImage(),
+                             swap->currentImageLayout(),
+                             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    swap->setCurrentImageLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  }
 }
 
 void VulkanCommandBuffer::onDraw(uint32_t vertexCount,
