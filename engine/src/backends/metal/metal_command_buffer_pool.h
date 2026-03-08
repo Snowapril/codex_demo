@@ -17,7 +17,7 @@ class MetalCommandBufferPool : public CommandBufferPool {
       return nullptr;
     }
     auto buffer = std::make_unique<MetalCommandBuffer>(
-        _device, *metalQueue, this->queue().queueType());
+        _device, *metalQueue);
     buffer->setTimelineValue(this->queue().timeline()->allocateNext().value);
     return buffer;
   }

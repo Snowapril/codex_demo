@@ -16,8 +16,7 @@ class VulkanCommandBufferPool : public CommandBufferPool {
     if (!vulkanQueue) {
       return nullptr;
     }
-    auto buffer = std::make_unique<VulkanCommandBuffer>(_device, *vulkanQueue,
-                                                        this->queue().queueType());
+    auto buffer = std::make_unique<VulkanCommandBuffer>(_device, *vulkanQueue);
     buffer->setTimelineValue(this->queue().timeline()->allocateNext().value);
     return buffer;
   }

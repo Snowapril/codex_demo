@@ -35,14 +35,13 @@ MTLStoreAction toMetalStoreAction(StoreAction action) {
 }
 }  // namespace
 
-MetalCommandBuffer::MetalCommandBuffer(MetalDevice& device,
-                                       MetalCommandQueue& queue,
-                                       QueueType queueType)
-    : _device(device), _queue(queue), _queueType(queueType) {}
+MetalCommandBuffer::MetalCommandBuffer(BackendDevice& device,
+                                       CommandQueue& queue)
+    : CommandBuffer(device, queue) {}
 
 CommandBufferTiming MetalCommandBuffer::submit() {
   CommandBufferTiming timing{};
-  timing.queue = _queueType;
+  timing.queue = _queue.queueType();
   timing.timelineValue = timelineValue();
   RENG_ASSERT(!isRecording(),
               "submit requires endCommandBuffer to be called");
@@ -65,10 +64,12 @@ CommandBufferTiming MetalCommandBuffer::submit() {
     [_mlEncoder endEncoding];
     _mlEncoder = nil;
   }
+
+  MetalCommandQueue& metalQueue = static_cast<MetalCommandQueue&>(queue());
   id<MTL4CommandBuffer> buffers[] = {_commandBuffer};
-  [_queue.queue() commit:buffers count:1];
-  if (auto* timeline = _queue.metalTimeline()) {
-    timeline->signalQueue(_queue.queue(), timelineValue());
+  [metalQueue.queue() commit:buffers count:1];
+  if (auto* timeline = metalQueue.metalTimeline()) {
+    timeline->signalQueue(metalQueue.queue(), timelineValue());
   }
 
   _commandBuffer = nil;
@@ -80,23 +81,25 @@ id<MTL4CommandBuffer> MetalCommandBuffer::ensureCommandBuffer() {
   if (_commandBuffer) {
     return _commandBuffer;
   }
-  if (!_queue.queue()) {
+  MetalCommandQueue& metalQueue = static_cast<MetalCommandQueue&>(queue());
+  if (!metalQueue.queue()) {
     RengLogger::logError("Metal command buffer missing command queue");
     return nil;
   }
-  id<MTLDevice> device = _device.device();
-  if (!device) {
+  auto& metalDevice = static_cast<MetalDevice&>(device());
+  id<MTLDevice> nativeDevice = metalDevice.device();
+  if (!nativeDevice) {
     RengLogger::logError("Metal device missing for command buffer");
     return nil;
   }
   if (!_allocator) {
-    _allocator = [device newCommandAllocator];
+    _allocator = [nativeDevice newCommandAllocator];
     if (!_allocator) {
       RengLogger::logError("Failed to create Metal command allocator");
       return nil;
     }
   }
-  _commandBuffer = [device newCommandBuffer];
+  _commandBuffer = [nativeDevice newCommandBuffer];
   if (!_commandBuffer) {
     RengLogger::logError("Failed to create Metal command buffer");
   }
@@ -108,11 +111,12 @@ void MetalCommandBuffer::onBeginCommandBuffer() {
   if (!commandBuffer) {
     return;
   }
-  _timestampHeap = _queue.acquireTimestampHeap(timelineValue());
+  MetalCommandQueue& metalQueue = static_cast<MetalCommandQueue&>(queue());
+  _timestampHeap = metalQueue.acquireTimestampHeap(timelineValue());
   if (_timestampFrequency == 0) {
-    id<MTLDevice> metalDevice = _device.device();
-    if (metalDevice) {
-      _timestampFrequency = [metalDevice queryTimestampFrequency];
+    auto& metalDevice = static_cast<MetalDevice&>(device());
+    if (metalDevice.device()) {
+      _timestampFrequency = [metalDevice.device() queryTimestampFrequency];
     }
   }
   [commandBuffer beginCommandBufferWithAllocator:_allocator];

@@ -31,15 +31,15 @@ VkAttachmentStoreOp toVkStoreOp(StoreAction action) {
 }
 }  // namespace
 
-VulkanCommandBuffer::VulkanCommandBuffer(VulkanDevice& device,
-                                         VulkanCommandQueue& queue,
-                                         QueueType queueType)
-    : _device(device), _queue(queue), _queueType(queueType) {
+VulkanCommandBuffer::VulkanCommandBuffer(BackendDevice& device, CommandQueue& queue)
+    : CommandBuffer(device, queue) {
   VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-  poolInfo.queueFamilyIndex = _queue.familyIndex();
+  VulkanCommandQueue& vulkanQueue = static_cast<VulkanCommandQueue&>(queue);
+  auto& vulkanDevice = static_cast<VulkanDevice&>(device);
+  poolInfo.queueFamilyIndex = vulkanQueue.familyIndex();
   poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   if (!vulkan::check(
-          vkCreateCommandPool(device.device(), &poolInfo, nullptr,
+          vkCreateCommandPool(vulkanDevice.device(), &poolInfo, nullptr,
                               &_commandPool),
           "vkCreateCommandPool failed")) {
     return;
@@ -51,18 +51,19 @@ VulkanCommandBuffer::VulkanCommandBuffer(VulkanDevice& device,
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   allocInfo.commandBufferCount = 1;
   if (!vulkan::check(
-          vkAllocateCommandBuffers(device.device(), &allocInfo,
+          vkAllocateCommandBuffers(vulkanDevice.device(), &allocInfo,
                                    &_commandBuffer),
           "vkAllocateCommandBuffers failed")) {
-    vkDestroyCommandPool(device.device(), _commandPool, nullptr);
+    vkDestroyCommandPool(vulkanDevice.device(), _commandPool, nullptr);
     _commandPool = VK_NULL_HANDLE;
   }
 }
 
 VulkanCommandBuffer::~VulkanCommandBuffer() {
-  VkDevice device = _device.device();
+  auto& vulkanDevice = static_cast<VulkanDevice&>(device());
+  VkDevice nativeDevice = vulkanDevice.device();
   if (_commandPool != VK_NULL_HANDLE) {
-    vkDestroyCommandPool(device, _commandPool, nullptr);
+    vkDestroyCommandPool(nativeDevice, _commandPool, nullptr);
     _commandPool = VK_NULL_HANDLE;
     _commandBuffer = VK_NULL_HANDLE;
   }
@@ -85,8 +86,9 @@ void VulkanCommandBuffer::onEndCommandBuffer() {
 }
 
 CommandBufferTiming VulkanCommandBuffer::submit() {
+  VulkanCommandQueue& vulkanQueue = static_cast<VulkanCommandQueue&>(queue());
   CommandBufferTiming timing{};
-  timing.queue = _queueType;
+  timing.queue = vulkanQueue.queueType();
   timing.timelineValue = timelineValue();
   RENG_ASSERT(!isRecording(),
               "submit requires endCommandBuffer to be called");
@@ -100,7 +102,7 @@ CommandBufferTiming VulkanCommandBuffer::submit() {
   timelineInfo.pSignalSemaphoreValues = &signalValue;
 
   VkSemaphore signalSemaphore = VK_NULL_HANDLE;
-  if (auto* timeline = _queue.vulkanTimeline()) {
+  if (auto* timeline = vulkanQueue.vulkanTimeline()) {
     signalSemaphore = timeline->semaphore();
   }
 
@@ -113,11 +115,11 @@ CommandBufferTiming VulkanCommandBuffer::submit() {
       signalSemaphore != VK_NULL_HANDLE ? &signalSemaphore : nullptr;
 
   if (!vulkan::check(
-          vkQueueSubmit(_queue.queue(), 1, &submitInfo, VK_NULL_HANDLE),
+          vkQueueSubmit(vulkanQueue.queue(), 1, &submitInfo, VK_NULL_HANDLE),
           "vkQueueSubmit failed")) {
     return timing;
   }
-  vkQueueWaitIdle(_queue.queue());
+  vkQueueWaitIdle(vulkanQueue.queue());
 
   _timestampPool = VK_NULL_HANDLE;
   return timing;
@@ -137,7 +139,8 @@ bool VulkanCommandBuffer::ensureRecording() {
                      "vkBeginCommandBuffer failed")) {
     return false;
   }
-  _timestampPool = _queue.acquireTimestampPool(timelineValue());
+  VulkanCommandQueue& vulkanQueue = static_cast<VulkanCommandQueue&>(queue());
+  _timestampPool = vulkanQueue.acquireTimestampPool(timelineValue());
   if (_timestampPool != VK_NULL_HANDLE) {
     vkCmdResetQueryPool(_commandBuffer, _timestampPool, 0, 2);
     vkCmdWriteTimestamp(_commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

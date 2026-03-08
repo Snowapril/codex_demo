@@ -12,9 +12,7 @@ namespace reng {
 
 class MetalCommandBuffer : public CommandBuffer {
  public:
-  explicit MetalCommandBuffer(MetalDevice& device,
-                              MetalCommandQueue& queue,
-                              QueueType queueType);
+  explicit MetalCommandBuffer(BackendDevice& device, CommandQueue& queue);
   ~MetalCommandBuffer() override = default;
 
   CommandBufferTiming submit() override;
@@ -41,9 +39,6 @@ class MetalCommandBuffer : public CommandBuffer {
   id<MTL4CommandBuffer> ensureCommandBuffer();
   id<MTLTexture> lookupTexture(const ResourceId& resource);
 
-  MetalDevice& _device;
-  MetalCommandQueue& _queue;
-  QueueType _queueType = QueueType::Graphics;
   id<MTL4CommandAllocator> _allocator = nil;
   id<MTL4CommandBuffer> _commandBuffer = nil;
   id<MTL4CounterHeap> _timestampHeap = nil;

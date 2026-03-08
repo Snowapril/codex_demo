@@ -9,9 +9,7 @@ namespace reng {
 
 class VulkanCommandBuffer : public CommandBuffer {
  public:
-  explicit VulkanCommandBuffer(VulkanDevice& device,
-                               VulkanCommandQueue& queue,
-                               QueueType queueType);
+  explicit VulkanCommandBuffer(BackendDevice& device, CommandQueue& queue);
   ~VulkanCommandBuffer() override;
 
   CommandBufferTiming submit() override;
@@ -39,9 +37,6 @@ class VulkanCommandBuffer : public CommandBuffer {
   void transitionSwapchainImage(VkImage image, VkImageLayout oldLayout,
                                 VkImageLayout newLayout);
 
-  VulkanDevice& _device;
-  VulkanCommandQueue& _queue;
-  QueueType _queueType = QueueType::Graphics;
   VkCommandPool _commandPool = VK_NULL_HANDLE;
   VkCommandBuffer _commandBuffer = VK_NULL_HANDLE;
   VkQueryPool _timestampPool = VK_NULL_HANDLE;
