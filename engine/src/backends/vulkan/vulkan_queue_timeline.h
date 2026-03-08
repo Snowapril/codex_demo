@@ -12,6 +12,7 @@ class VulkanQueueTimeline : public QueueTimeline {
   ~VulkanQueueTimeline() override = default;
 
   VkSemaphore semaphore() const { return _semaphore; }
+  uint64_t completedValue() const override;
 
  protected:
   bool initInner() override final;

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "reng/render_graph.h"
+#include "reng/queue_types.h"
 
 namespace reng {
 
@@ -30,6 +30,7 @@ class QueueTimeline {
   TimelineHandle allocateNext() {
     return TimelineHandle{this, nextValue()};
   }
+  virtual uint64_t completedValue() const = 0;
 
  protected:
   virtual bool initInner() = 0;

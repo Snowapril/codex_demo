@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <vulkan/vulkan.h>
 
 #include "reng/command_queue.h"
@@ -19,6 +21,7 @@ class VulkanCommandQueue : public CommandQueue {
   VulkanQueueTimeline* vulkanTimeline() {
     return static_cast<VulkanQueueTimeline*>(timeline());
   }
+  VkQueryPool acquireTimestampPool(uint64_t timelineValue);
 
  private:
   std::unique_ptr<QueueTimeline> createTimeline(
@@ -30,6 +33,11 @@ class VulkanCommandQueue : public CommandQueue {
 
   VkQueue _queue = VK_NULL_HANDLE;
   uint32_t _familyIndex = 0;
+  struct TimestampPoolEntry {
+    VkQueryPool pool = VK_NULL_HANDLE;
+    uint64_t lastValue = 0;
+  };
+  std::vector<TimestampPoolEntry> _timestampPools;
 };
 
 }  // namespace reng

@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "reng/command_buffer.h"
+#include "reng/queue_types.h"
 #include "reng/resources.h"
 
 namespace reng {
@@ -15,12 +16,6 @@ namespace reng {
 class BackendDevice;
 class BackendSwapchain;
 class ResourcePool;
-
-enum class QueueType : uint8_t {
-  Graphics,
-  Compute,
-  Transfer,
-};
 
 enum class PassType : uint8_t {
   Blit,
@@ -99,11 +94,13 @@ class RenderGraph;
 
 class ResolvedFrame {
  public:
-  explicit ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers);
-  void execute();
+  explicit ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers,
+                         std::vector<QueueType>&& queueTypes);
+  std::vector<CommandBufferTiming> execute();
 
  private:
   std::vector<std::unique_ptr<CommandBuffer>> _buffers;
+  std::vector<QueueType> _queueTypes;
 };
 
 class RenderGraph {

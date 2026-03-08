@@ -74,16 +74,23 @@ void VulkanCommandBuffer::onBeginCommandBuffer() {
 
 void VulkanCommandBuffer::onEndCommandBuffer() {
   if (_recording) {
+    if (_timestampPool != VK_NULL_HANDLE) {
+      vkCmdWriteTimestamp(_commandBuffer,
+                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                          _timestampPool, 1);
+    }
     vkEndCommandBuffer(_commandBuffer);
     _recording = false;
   }
 }
 
-void VulkanCommandBuffer::submit() {
+CommandBufferTiming VulkanCommandBuffer::submit() {
+  CommandBufferTiming timing{};
+  timing.queue = _queueType;
   RENG_ASSERT(!isRecording(),
               "submit requires endCommandBuffer to be called");
   if (_commandBuffer == VK_NULL_HANDLE) {
-    return;
+    return timing;
   }
   VkTimelineSemaphoreSubmitInfo timelineInfo{
       VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
@@ -107,9 +114,29 @@ void VulkanCommandBuffer::submit() {
   if (!vulkan::check(
           vkQueueSubmit(_queue.queue(), 1, &submitInfo, VK_NULL_HANDLE),
           "vkQueueSubmit failed")) {
-    return;
+    return timing;
   }
   vkQueueWaitIdle(_queue.queue());
+
+  if (_timestampPool != VK_NULL_HANDLE) {
+    uint64_t timestamps[2] = {};
+    VkResult result = vkGetQueryPoolResults(
+        _device.device(), _timestampPool, 0, 2, sizeof(timestamps), timestamps,
+        sizeof(uint64_t),
+        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+    if (result == VK_SUCCESS) {
+      double periodNs = _device.timestampPeriod();
+      if (periodNs > 0.0) {
+        timing.gpuStartNs =
+            static_cast<uint64_t>(timestamps[0] * periodNs);
+        timing.gpuEndNs =
+            static_cast<uint64_t>(timestamps[1] * periodNs);
+        timing.valid = true;
+      }
+    }
+  }
+  _timestampPool = VK_NULL_HANDLE;
+  return timing;
 }
 
 bool VulkanCommandBuffer::ensureRecording() {
@@ -125,6 +152,12 @@ bool VulkanCommandBuffer::ensureRecording() {
   if (!vulkan::check(vkBeginCommandBuffer(_commandBuffer, &beginInfo),
                      "vkBeginCommandBuffer failed")) {
     return false;
+  }
+  _timestampPool = _queue.acquireTimestampPool(timelineValue());
+  if (_timestampPool != VK_NULL_HANDLE) {
+    vkCmdResetQueryPool(_commandBuffer, _timestampPool, 0, 2);
+    vkCmdWriteTimestamp(_commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        _timestampPool, 0);
   }
   _recording = true;
   return true;

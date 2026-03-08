@@ -2,6 +2,8 @@
 
 #import <Metal/Metal.h>
 
+#include <vector>
+
 #include "metal_queue_timeline.h"
 #include "reng/command_queue.h"
 
@@ -17,6 +19,7 @@ class MetalCommandQueue : public CommandQueue {
   MetalQueueTimeline* metalTimeline() {
     return static_cast<MetalQueueTimeline*>(timeline());
   }
+  id<MTL4CounterHeap> acquireTimestampHeap(uint64_t timelineValue);
 
  private:
  std::unique_ptr<QueueTimeline> createTimeline(
@@ -27,6 +30,11 @@ class MetalCommandQueue : public CommandQueue {
   void shutdownInner() override;
 
   id<MTL4CommandQueue> _queue = nil;
+  struct TimestampHeapEntry {
+    id<MTL4CounterHeap> heap = nil;
+    uint64_t lastValue = 0;
+  };
+  std::vector<TimestampHeapEntry> _timestampHeaps;
 };
 
 }  // namespace reng

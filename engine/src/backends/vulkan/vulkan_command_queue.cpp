@@ -3,6 +3,7 @@
 #include "reng/logger.h"
 #include "vulkan_command_buffer_pool.h"
 #include "vulkan_device.h"
+#include "vulkan_utils.h"
 
 namespace reng {
 
@@ -30,6 +31,39 @@ bool VulkanCommandQueue::initInner() {
   return true;
 }
 
-void VulkanCommandQueue::shutdownInner() { _queue = VK_NULL_HANDLE; }
+VkQueryPool VulkanCommandQueue::acquireTimestampPool(uint64_t timelineValue) {
+  auto* timeline = vulkanTimeline();
+  uint64_t completed = timeline ? timeline->completedValue() : 0;
+  for (auto& entry : _timestampPools) {
+    if (entry.pool != VK_NULL_HANDLE && completed >= entry.lastValue) {
+      entry.lastValue = timelineValue;
+      return entry.pool;
+    }
+  }
+
+  VkQueryPoolCreateInfo queryInfo{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
+  queryInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+  queryInfo.queryCount = 2;
+  VkQueryPool pool = VK_NULL_HANDLE;
+  VkDevice device = static_cast<VulkanDevice&>(this->device()).device();
+  if (!vulkan::check(
+          vkCreateQueryPool(device, &queryInfo, nullptr, &pool),
+          "vkCreateQueryPool failed")) {
+    return VK_NULL_HANDLE;
+  }
+  _timestampPools.push_back({pool, timelineValue});
+  return pool;
+}
+
+void VulkanCommandQueue::shutdownInner() {
+  VkDevice device = static_cast<VulkanDevice&>(this->device()).device();
+  for (auto& entry : _timestampPools) {
+    if (entry.pool != VK_NULL_HANDLE) {
+      vkDestroyQueryPool(device, entry.pool, nullptr);
+    }
+  }
+  _timestampPools.clear();
+  _queue = VK_NULL_HANDLE;
+}
 
 }  // namespace reng

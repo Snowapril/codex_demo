@@ -1,6 +1,7 @@
 #pragma once
 
 #import <Metal/Metal.h>
+#import <Metal/MTL4Counters.h>
 
 #include "metal_command_queue.h"
 #include "metal_device.h"
@@ -16,7 +17,7 @@ class MetalCommandBuffer : public CommandBuffer {
                               QueueType queueType);
   ~MetalCommandBuffer() override = default;
 
-  void submit() override;
+  CommandBufferTiming submit() override;
 
  protected:
   void onBeginCommandBuffer() override;
@@ -45,6 +46,8 @@ class MetalCommandBuffer : public CommandBuffer {
   QueueType _queueType = QueueType::Graphics;
   id<MTL4CommandAllocator> _allocator = nil;
   id<MTL4CommandBuffer> _commandBuffer = nil;
+  id<MTL4CounterHeap> _timestampHeap = nil;
+  uint64_t _timestampFrequency = 0;
   id<MTL4ComputeCommandEncoder> _blitEncoder = nil;
   id<MTL4RenderCommandEncoder> _renderEncoder = nil;
   id<MTL4ComputeCommandEncoder> _computeEncoder = nil;

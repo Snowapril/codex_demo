@@ -3,12 +3,20 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "reng/queue_types.h"
 #include "reng/resources.h"
 
 namespace reng {
 
 class BackendSwapchain;
 class ResourcePool;
+
+struct CommandBufferTiming {
+  QueueType queue = QueueType::Graphics;
+  uint64_t gpuStartNs = 0;
+  uint64_t gpuEndNs = 0;
+  bool valid = false;
+};
 
 class CommandBuffer {
  public:
@@ -18,7 +26,7 @@ class CommandBuffer {
   void setTimelineValue(uint64_t value);
   void beginCommandBuffer();
   void endCommandBuffer();
-  virtual void submit() = 0;
+  virtual CommandBufferTiming submit() = 0;
   bool isRecording() const { return _recording; }
 
   void beginBlitPass();

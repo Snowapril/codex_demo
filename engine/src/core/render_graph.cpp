@@ -1,5 +1,6 @@
 #include "reng/render_graph.h"
 
+#include <array>
 #include <unordered_map>
 
 #include "reng/command_buffer.h"
@@ -33,6 +34,7 @@ bool isWriteAccess(const ResourceAccess& access) {
          mode == TextureAccessType::Storage ||
          mode == TextureAccessType::TransferDst;
 }
+
 }  // namespace
 
 void BlitPassBuilder::copyTexture(const ResourceId& src,
@@ -60,15 +62,25 @@ void MLPassBuilder::dispatch(uint32_t x, uint32_t y, uint32_t z) {
   _cmd.dispatchML(x, y, z);
 }
 
-ResolvedFrame::ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers)
-    : _buffers(std::move(buffers)) {}
+ResolvedFrame::ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers,
+                             std::vector<QueueType>&& queueTypes)
+    : _buffers(std::move(buffers)),
+      _queueTypes(std::move(queueTypes)) {}
 
-void ResolvedFrame::execute() {
-  for (auto& buffer : _buffers) {
-    if (buffer) {
-      buffer->submit();
+std::vector<CommandBufferTiming> ResolvedFrame::execute() {
+  std::vector<CommandBufferTiming> timings;
+  timings.reserve(_buffers.size());
+  for (size_t i = 0; i < _buffers.size(); ++i) {
+    auto& buffer = _buffers[i];
+    if (!buffer) {
+      continue;
     }
+    CommandBufferTiming timing = buffer->submit();
+    timing.queue =
+        i < _queueTypes.size() ? _queueTypes[i] : QueueType::Graphics;
+    timings.push_back(timing);
   }
+  return timings;
 }
 
 void RenderGraph::beginFrame() {
@@ -304,16 +316,24 @@ ResolvedFrame RenderGraph::resolve(BackendDevice& device,
   }
 
   std::vector<std::unique_ptr<CommandBuffer>> buffers;
+  std::vector<QueueType> queueTypes;
   buffers.reserve(queueBuffers.size());
-  for (auto& entry : queueBuffers) {
-    if (entry.second) {
-      if (entry.second->isRecording()) {
-        entry.second->endCommandBuffer();
-      }
-      buffers.push_back(std::move(entry.second));
+  queueTypes.reserve(queueBuffers.size());
+
+  const std::array<QueueType, 3> queueOrder = {
+      QueueType::Graphics, QueueType::Compute, QueueType::Transfer};
+  for (QueueType queueType : queueOrder) {
+    auto it = queueBuffers.find(queueType);
+    if (it == queueBuffers.end() || !it->second) {
+      continue;
     }
+    if (it->second->isRecording()) {
+      it->second->endCommandBuffer();
+    }
+    buffers.push_back(std::move(it->second));
+    queueTypes.push_back(queueType);
   }
-  return ResolvedFrame(std::move(buffers));
+  return ResolvedFrame(std::move(buffers), std::move(queueTypes));
 }
 
 }  // namespace reng

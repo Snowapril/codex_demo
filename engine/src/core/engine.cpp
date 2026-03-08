@@ -1,10 +1,21 @@
 #include "reng/engine.h"
 
+#include <chrono>
+
 #include "core/resource_pool.h"
 #include "platform/backend_factory.h"
 #include "reng/logger.h"
 
 namespace reng {
+
+namespace {
+uint64_t nowNs() {
+  return static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::steady_clock::now().time_since_epoch())
+          .count());
+}
+}  // namespace
 
 Engine::Engine(const AppDesc& desc, AppCallbacks& callbacks)
     : _desc(desc), _callbacks(callbacks) {}
@@ -43,6 +54,7 @@ bool Engine::initBackend(const PlatformContext& context) {
 }
 
 void Engine::tick(float deltaSeconds) {
+  _lastFrameTimings.frameStartNs = nowNs();
   _callbacks.onInput();
   _callbacks.onUpdateFrame(deltaSeconds);
   _graph.beginFrame();
@@ -50,9 +62,27 @@ void Engine::tick(float deltaSeconds) {
   _callbacks.onRender(_graph);
   _graph.compile();
   (void)_swapchain->acquireNextImage();
-  _graph.resolve(*_device, *_resourcePool, *_swapchain).execute();
+  auto resolved = _graph.resolve(*_device, *_resourcePool, *_swapchain);
+  _lastFrameTimings.commandBuffers = resolved.execute();
   _swapchain->signalPresentReady();
   _swapchain->present();
+  _lastFrameTimings.frameEndNs = nowNs();
+
+  double frameMs = 0.0;
+  if (_lastFrameTimings.frameEndNs >= _lastFrameTimings.frameStartNs) {
+    frameMs = static_cast<double>(_lastFrameTimings.frameEndNs -
+                                  _lastFrameTimings.frameStartNs) /
+              1e6;
+  }
+  double gpuMs = 0.0;
+  for (const auto& timing : _lastFrameTimings.commandBuffers) {
+    if (timing.valid && timing.gpuEndNs >= timing.gpuStartNs) {
+      gpuMs +=
+          static_cast<double>(timing.gpuEndNs - timing.gpuStartNs) / 1e6;
+    }
+  }
+  RengLogger::logVerbose("Frame time {:.3f} ms, GPU time {:.3f} ms", frameMs,
+                         gpuMs);
 }
 
 }  // namespace reng

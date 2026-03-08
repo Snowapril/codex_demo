@@ -26,4 +26,8 @@ void MetalQueueTimeline::signalQueue(id<MTL4CommandQueue> queue,
   [queue signalEvent:_event value:value];
 }
 
+uint64_t MetalQueueTimeline::completedValue() const {
+  return _event ? _event.signaledValue : 0;
+}
+
 }  // namespace reng

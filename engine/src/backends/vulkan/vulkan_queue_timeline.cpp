@@ -24,6 +24,17 @@ bool VulkanQueueTimeline::initInner() {
   return true;
 }
 
+uint64_t VulkanQueueTimeline::completedValue() const {
+  VkDevice device = static_cast<const VulkanDevice&>(_device).device();
+  if (_semaphore == VK_NULL_HANDLE) {
+    return 0;
+  }
+  uint64_t value = 0;
+  VkResult result =
+      vkGetSemaphoreCounterValue(device, _semaphore, &value);
+  return result == VK_SUCCESS ? value : 0;
+}
+
 void VulkanQueueTimeline::shutdownInner() {
   VkDevice device = static_cast<VulkanDevice&>(_device).device();
   if (_semaphore != VK_NULL_HANDLE) {

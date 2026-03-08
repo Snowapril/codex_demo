@@ -13,6 +13,7 @@ class MetalQueueTimeline : public QueueTimeline {
 
   id<MTLSharedEvent> event() const { return _event; }
   void signalQueue(id<MTL4CommandQueue> queue, uint64_t value);
+  uint64_t completedValue() const override;
 
  protected:
   bool initInner() override final;

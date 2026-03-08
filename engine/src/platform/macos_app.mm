@@ -180,6 +180,25 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
 #endif
   @autoreleasepool {
     NSApplication* app = [NSApplication sharedApplication];
+    NSString* appName =
+        desc.title ? [NSString stringWithUTF8String:desc.title]
+                   : [[NSProcessInfo processInfo] processName];
+    NSMenu* mainMenu = [[NSMenu alloc] init];
+    NSMenuItem* appMenuItem = [[NSMenuItem alloc] init];
+    [mainMenu addItem:appMenuItem];
+    [app setMainMenu:mainMenu];
+
+    NSMenu* appMenu = [[NSMenu alloc] initWithTitle:@""];
+    NSString* quitTitle =
+        [NSString stringWithFormat:@"Quit %@", appName];
+    NSMenuItem* quitItem =
+        [[NSMenuItem alloc] initWithTitle:quitTitle
+                                   action:@selector(terminate:)
+                            keyEquivalent:@"q"];
+    [quitItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
+    [appMenu addItem:quitItem];
+    [appMenuItem setSubmenu:appMenu];
+
     AppDelegate* delegate = [[AppDelegate alloc] initWithDesc:desc
                                                     callbacks:&callbacks];
     RengLogger::logInfo("Setting NSApplication delegate");

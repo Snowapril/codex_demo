@@ -14,7 +14,7 @@ class VulkanCommandBuffer : public CommandBuffer {
                                QueueType queueType);
   ~VulkanCommandBuffer() override;
 
-  void submit() override;
+  CommandBufferTiming submit() override;
 
  protected:
   void onBeginCommandBuffer() override;
@@ -44,6 +44,7 @@ class VulkanCommandBuffer : public CommandBuffer {
   QueueType _queueType = QueueType::Graphics;
   VkCommandPool _commandPool = VK_NULL_HANDLE;
   VkCommandBuffer _commandBuffer = VK_NULL_HANDLE;
+  VkQueryPool _timestampPool = VK_NULL_HANDLE;
   bool _recording = false;
   bool _renderingActive = false;
 };

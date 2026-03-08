@@ -2,6 +2,7 @@
 
 #include "metal_swapchain.h"
 #include "metal_utils.h"
+#import <Metal/MTL4Counters.h>
 #include "reng/backend.h"
 #include "reng/logger.h"
 #include "reng/reng.h"
@@ -39,11 +40,13 @@ MetalCommandBuffer::MetalCommandBuffer(MetalDevice& device,
                                        QueueType queueType)
     : _device(device), _queue(queue), _queueType(queueType) {}
 
-void MetalCommandBuffer::submit() {
+CommandBufferTiming MetalCommandBuffer::submit() {
+  CommandBufferTiming timing{};
+  timing.queue = _queueType;
   RENG_ASSERT(!isRecording(),
               "submit requires endCommandBuffer to be called");
   if (!_commandBuffer) {
-    return;
+    return timing;
   }
   if (_blitEncoder) {
     [_blitEncoder endEncoding];
@@ -61,12 +64,35 @@ void MetalCommandBuffer::submit() {
     [_mlEncoder endEncoding];
     _mlEncoder = nil;
   }
+  id<MTL4CommandBuffer> buffers[] = {_commandBuffer};
+  [_queue.queue() commit:buffers count:1];
   if (auto* timeline = _queue.metalTimeline()) {
     timeline->signalQueue(_queue.queue(), timelineValue());
   }
-  id<MTL4CommandBuffer> buffers[] = {_commandBuffer};
-  [_queue.queue() commit:buffers count:1];
+
+  if (_timestampHeap) {
+    if (auto* timeline = _queue.metalTimeline()) {
+      id<MTLSharedEvent> event = timeline->event();
+      if (event) {
+        [event waitUntilSignaledValue:timelineValue() timeoutMS:60000];
+      }
+    }
+    NSData* data = [_timestampHeap resolveCounterRange:NSMakeRange(0, 2)];
+    if (data && data.length >= sizeof(MTL4TimestampHeapEntry) * 2 &&
+        _timestampFrequency > 0) {
+      const auto* entries =
+          static_cast<const MTL4TimestampHeapEntry*>(data.bytes);
+      double ticksToNs = 1e9 / static_cast<double>(_timestampFrequency);
+      timing.gpuStartNs =
+          static_cast<uint64_t>(entries[0].timestamp * ticksToNs);
+      timing.gpuEndNs =
+          static_cast<uint64_t>(entries[1].timestamp * ticksToNs);
+      timing.valid = true;
+    }
+  }
   _commandBuffer = nil;
+  _timestampHeap = nil;
+  return timing;
 }
 
 id<MTL4CommandBuffer> MetalCommandBuffer::ensureCommandBuffer() {
@@ -101,11 +127,25 @@ void MetalCommandBuffer::onBeginCommandBuffer() {
   if (!commandBuffer) {
     return;
   }
+  _timestampHeap = _queue.acquireTimestampHeap(timelineValue());
+  if (_timestampFrequency == 0) {
+    id<MTLDevice> metalDevice = _device.device();
+    if (metalDevice) {
+      _timestampFrequency = [metalDevice queryTimestampFrequency];
+    }
+  }
   [commandBuffer beginCommandBufferWithAllocator:_allocator];
+  if (_timestampHeap) {
+    [_timestampHeap invalidateCounterRange:NSMakeRange(0, 2)];
+    [commandBuffer writeTimestampIntoHeap:_timestampHeap atIndex:0];
+  }
 }
 
 void MetalCommandBuffer::onEndCommandBuffer() {
   if (_commandBuffer) {
+    if (_timestampHeap) {
+      [_commandBuffer writeTimestampIntoHeap:_timestampHeap atIndex:1];
+    }
     [_commandBuffer endCommandBuffer];
   }
 }

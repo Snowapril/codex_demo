@@ -47,6 +47,7 @@ class VulkanDevice : public BackendDevice {
     return index < _copyQueues.size() ? _copyQueues[index].get() : nullptr;
   }
   uint32_t graphicsQueueFamily() const { return _graphicsQueueFamily; }
+  double timestampPeriod() const { return _timestampPeriod; }
 
  private:
   bool initializeDevice();
@@ -59,6 +60,7 @@ class VulkanDevice : public BackendDevice {
   VkDevice _device = VK_NULL_HANDLE;
   VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
   uint32_t _graphicsQueueFamily = 0;
+  double _timestampPeriod = 0.0;
   std::unique_ptr<VulkanCommandQueue> _graphicsQueue;
   std::unique_ptr<VulkanCommandQueue> _computeQueue;
   std::vector<std::unique_ptr<VulkanCommandQueue>> _copyQueues;

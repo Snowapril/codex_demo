@@ -254,6 +254,9 @@ bool VulkanDevice::initializeDevice() {
   std::vector<VkPhysicalDevice> devices(count);
   vkEnumeratePhysicalDevices(_instance, &count, devices.data());
   _physicalDevice = devices[0];
+  VkPhysicalDeviceProperties deviceProps{};
+  vkGetPhysicalDeviceProperties(_physicalDevice, &deviceProps);
+  _timestampPeriod = static_cast<double>(deviceProps.limits.timestampPeriod);
 
   uint32_t familyCount = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &familyCount,
