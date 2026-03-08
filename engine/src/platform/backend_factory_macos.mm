@@ -31,6 +31,10 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       return bundle;
     }
     auto device = std::make_unique<MetalDevice>(desc.device);
+    if (!device->isValid()) {
+      RengLogger::logError("Metal device unavailable");
+      return bundle;
+    }
     auto swapchain = std::make_unique<MetalSwapchain>(
         layer, *device,
         static_cast<MetalCommandQueue*>(device->graphicsQueue()),

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -22,6 +23,8 @@ class VulkanCommandQueue : public CommandQueue {
     return static_cast<VulkanQueueTimeline*>(timeline());
   }
   VkQueryPool acquireTimestampPool(uint64_t timelineValue);
+  bool resolveTimestamp(uint64_t timelineValue,
+                        CommandBufferTiming& timing) override;
 
  private:
   std::unique_ptr<QueueTimeline> createTimeline(
@@ -36,8 +39,10 @@ class VulkanCommandQueue : public CommandQueue {
   struct TimestampPoolEntry {
     VkQueryPool pool = VK_NULL_HANDLE;
     uint64_t lastValue = 0;
+    bool pending = false;
   };
   std::vector<TimestampPoolEntry> _timestampPools;
+  std::unordered_map<uint64_t, size_t> _timestampPoolByValue;
 };
 
 }  // namespace reng

@@ -48,6 +48,7 @@ class VulkanDevice : public BackendDevice {
   }
   uint32_t graphicsQueueFamily() const { return _graphicsQueueFamily; }
   double timestampPeriod() const { return _timestampPeriod; }
+  uint32_t timestampValidBits() const { return _timestampValidBits; }
 
  private:
   bool initializeDevice();
@@ -60,6 +61,7 @@ class VulkanDevice : public BackendDevice {
   VkDevice _device = VK_NULL_HANDLE;
   VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
   uint32_t _graphicsQueueFamily = 0;
+  uint32_t _timestampValidBits = 0;
   double _timestampPeriod = 0.0;
   std::unique_ptr<VulkanCommandQueue> _graphicsQueue;
   std::unique_ptr<VulkanCommandQueue> _computeQueue;

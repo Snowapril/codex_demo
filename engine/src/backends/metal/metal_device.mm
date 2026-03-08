@@ -7,7 +7,18 @@ namespace reng {
 MetalDevice::MetalDevice(const DeviceDesc& desc) : _desc(desc) {
   _device = MTLCreateSystemDefaultDevice();
   if (!_device) {
+    NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
+    if (devices && devices.count > 0) {
+      _device = devices[0];
+      RengLogger::logWarning(
+          "MTLCreateSystemDefaultDevice returned nil; using first Metal device");
+    }
+  }
+  if (!_device) {
+    NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
     RengLogger::logError("MTLCreateSystemDefaultDevice returned nil");
+    RengLogger::logError("No Metal devices found (count {})",
+                         devices ? devices.count : 0);
     return;
   }
   _graphicsQueue = std::make_unique<MetalCommandQueue>();

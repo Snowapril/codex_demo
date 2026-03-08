@@ -32,6 +32,7 @@ class Engine {
  private:
   Engine(const AppDesc& desc, AppCallbacks& callbacks);
   bool initBackend(const PlatformContext& context);
+  void resolvePendingTimings();
 
   AppDesc _desc;
   AppCallbacks& _callbacks;
@@ -41,6 +42,7 @@ class Engine {
   std::unique_ptr<BackendResources> _resources;
   std::unique_ptr<ResourcePool> _resourcePool;
   FrameTimings _lastFrameTimings;
+  std::vector<CommandBufferTiming> _pendingTimings;
 };
 
 }  // namespace reng

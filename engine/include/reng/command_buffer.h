@@ -13,6 +13,7 @@ class ResourcePool;
 
 struct CommandBufferTiming {
   QueueType queue = QueueType::Graphics;
+  uint64_t timelineValue = 0;
   uint64_t gpuStartNs = 0;
   uint64_t gpuEndNs = 0;
   bool valid = false;

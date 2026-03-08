@@ -37,6 +37,12 @@ class CommandQueue {
   QueueTimeline* timeline() const { return _timeline.get(); }
   CommandBufferPool* commandBufferPool() const { return _commandBufferPool.get(); }
   QueueType queueType() const { return _type; }
+  virtual bool resolveTimestamp(uint64_t timelineValue,
+                                CommandBufferTiming& timing) {
+    (void)timelineValue;
+    (void)timing;
+    return false;
+  }
 
  protected:
   BackendDevice& device() const { return *_device; }

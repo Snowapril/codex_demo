@@ -63,7 +63,10 @@ void Engine::tick(float deltaSeconds) {
   _graph.compile();
   (void)_swapchain->acquireNextImage();
   auto resolved = _graph.resolve(*_device, *_resourcePool, *_swapchain);
-  _lastFrameTimings.commandBuffers = resolved.execute();
+  auto submitted = resolved.execute();
+  _pendingTimings.insert(_pendingTimings.end(), submitted.begin(),
+                         submitted.end());
+  resolvePendingTimings();
   _swapchain->signalPresentReady();
   _swapchain->present();
   _lastFrameTimings.frameEndNs = nowNs();
@@ -83,6 +86,39 @@ void Engine::tick(float deltaSeconds) {
   }
   RengLogger::logVerbose("Frame time {:.3f} ms, GPU time {:.3f} ms", frameMs,
                          gpuMs);
+}
+
+void Engine::resolvePendingTimings() {
+  _lastFrameTimings.commandBuffers.clear();
+  if (!_device) {
+    _pendingTimings.clear();
+    return;
+  }
+  size_t pendingCount = _pendingTimings.size();
+  for (auto it = _pendingTimings.begin(); it != _pendingTimings.end();) {
+    CommandQueue* queue = nullptr;
+    switch (it->queue) {
+      case QueueType::Graphics:
+        queue = _device->graphicsQueue();
+        break;
+      case QueueType::Compute:
+        queue = _device->computeQueue();
+        break;
+      case QueueType::Transfer:
+        queue = _device->copyQueue(0);
+        break;
+    }
+    if (queue && queue->resolveTimestamp(it->timelineValue, *it)) {
+      _lastFrameTimings.commandBuffers.push_back(*it);
+      it = _pendingTimings.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  if (!_pendingTimings.empty()) {
+    RengLogger::logVerbose("GPU timing pending: {}/{}", _pendingTimings.size(),
+                           pendingCount);
+  }
 }
 
 }  // namespace reng

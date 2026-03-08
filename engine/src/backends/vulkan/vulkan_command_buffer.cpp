@@ -87,6 +87,7 @@ void VulkanCommandBuffer::onEndCommandBuffer() {
 CommandBufferTiming VulkanCommandBuffer::submit() {
   CommandBufferTiming timing{};
   timing.queue = _queueType;
+  timing.timelineValue = timelineValue();
   RENG_ASSERT(!isRecording(),
               "submit requires endCommandBuffer to be called");
   if (_commandBuffer == VK_NULL_HANDLE) {
@@ -118,23 +119,6 @@ CommandBufferTiming VulkanCommandBuffer::submit() {
   }
   vkQueueWaitIdle(_queue.queue());
 
-  if (_timestampPool != VK_NULL_HANDLE) {
-    uint64_t timestamps[2] = {};
-    VkResult result = vkGetQueryPoolResults(
-        _device.device(), _timestampPool, 0, 2, sizeof(timestamps), timestamps,
-        sizeof(uint64_t),
-        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
-    if (result == VK_SUCCESS) {
-      double periodNs = _device.timestampPeriod();
-      if (periodNs > 0.0) {
-        timing.gpuStartNs =
-            static_cast<uint64_t>(timestamps[0] * periodNs);
-        timing.gpuEndNs =
-            static_cast<uint64_t>(timestamps[1] * periodNs);
-        timing.valid = true;
-      }
-    }
-  }
   _timestampPool = VK_NULL_HANDLE;
   return timing;
 }

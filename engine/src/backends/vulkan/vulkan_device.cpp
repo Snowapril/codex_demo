@@ -3,6 +3,7 @@
 #include <array>
 #include <algorithm>
 #include <cstdlib>
+#include <unistd.h>
 #include <string>
 #include <vector>
 
@@ -101,6 +102,21 @@ std::vector<const char*> gatherInstanceExtensions() {
 
 bool VulkanDevice::initDevice(void* param1, void* param2) {
   RengLogger::logInfo("Vulkan init: validation {}", _desc.enableValidation ? "on" : "off");
+#if defined(__APPLE__)
+  const char* icdEnv = getenv("VK_ICD_FILENAMES");
+  if (!icdEnv || icdEnv[0] == '\0') {
+    const char* candidates[] = {
+        "/usr/local/share/vulkan/icd.d/libkosmickrisp_icd.json",
+        "/opt/homebrew/share/vulkan/icd.d/libkosmickrisp_icd.json"};
+    for (const char* path : candidates) {
+      if (access(path, F_OK) == 0) {
+        setenv("VK_ICD_FILENAMES", path, 0);
+        RengLogger::logInfo("VK_ICD_FILENAMES set to {}", path);
+        break;
+      }
+    }
+  }
+#endif
   uint32_t instanceVersion = VK_API_VERSION_1_0;
   auto enumerateVersion = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(
       vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion"));
@@ -272,6 +288,7 @@ bool VulkanDevice::initializeDevice() {
                                          &presentSupport);
     if ((props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport) {
       _graphicsQueueFamily = i;
+      _timestampValidBits = props[i].timestampValidBits;
       found = true;
       break;
     }

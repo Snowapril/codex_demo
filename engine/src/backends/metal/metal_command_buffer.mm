@@ -43,6 +43,7 @@ MetalCommandBuffer::MetalCommandBuffer(MetalDevice& device,
 CommandBufferTiming MetalCommandBuffer::submit() {
   CommandBufferTiming timing{};
   timing.queue = _queueType;
+  timing.timelineValue = timelineValue();
   RENG_ASSERT(!isRecording(),
               "submit requires endCommandBuffer to be called");
   if (!_commandBuffer) {
@@ -70,26 +71,6 @@ CommandBufferTiming MetalCommandBuffer::submit() {
     timeline->signalQueue(_queue.queue(), timelineValue());
   }
 
-  if (_timestampHeap) {
-    if (auto* timeline = _queue.metalTimeline()) {
-      id<MTLSharedEvent> event = timeline->event();
-      if (event) {
-        [event waitUntilSignaledValue:timelineValue() timeoutMS:60000];
-      }
-    }
-    NSData* data = [_timestampHeap resolveCounterRange:NSMakeRange(0, 2)];
-    if (data && data.length >= sizeof(MTL4TimestampHeapEntry) * 2 &&
-        _timestampFrequency > 0) {
-      const auto* entries =
-          static_cast<const MTL4TimestampHeapEntry*>(data.bytes);
-      double ticksToNs = 1e9 / static_cast<double>(_timestampFrequency);
-      timing.gpuStartNs =
-          static_cast<uint64_t>(entries[0].timestamp * ticksToNs);
-      timing.gpuEndNs =
-          static_cast<uint64_t>(entries[1].timestamp * ticksToNs);
-      timing.valid = true;
-    }
-  }
   _commandBuffer = nil;
   _timestampHeap = nil;
   return timing;

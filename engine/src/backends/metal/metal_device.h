@@ -18,6 +18,7 @@ class MetalDevice : public BackendDevice {
   explicit MetalDevice(const DeviceDesc& desc = DeviceDesc());
   void shutdown() override;
   id<MTLDevice> device() const { return _device; }
+  bool isValid() const { return _device != nil; }
   CommandQueue* graphicsQueue() const override {
     return _graphicsQueue.get();
   }
