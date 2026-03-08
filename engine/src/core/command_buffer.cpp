@@ -18,12 +18,13 @@ void CommandBuffer::setTimelineValue(uint64_t value) {
   _timelineValue = value;
 }
 
-void CommandBuffer::beginCommandBuffer() {
+void CommandBuffer::beginCommandBuffer(bool enableTimestamps) {
   if (isRecording()) {
     RengLogger::logWarning("beginCommandBuffer called while recording");
     return;
   }
   setRecording(true);
+  _timestampEnabled = enableTimestamps;
   onBeginCommandBuffer();
 }
 

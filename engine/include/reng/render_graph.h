@@ -30,6 +30,7 @@ struct PassHandle {
 
 struct CompileOptions {
   bool enableAutoSync = true;
+  bool enableTimestamps = true;
 };
 
 struct DependencyEdge {
@@ -144,7 +145,8 @@ class RenderGraph {
   };
 
   std::vector<PassDesc> _passes;
-  CompileReport _lastReport;
+ CompileReport _lastReport;
+  CompileOptions _lastOptions;
 };
 
 }  // namespace reng

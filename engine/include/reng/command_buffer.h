@@ -28,7 +28,7 @@ class CommandBuffer {
 
   void setContext(ResourcePool* resourcePool, BackendSwapchain* swapchain);
   void setTimelineValue(uint64_t value);
-  void beginCommandBuffer();
+  void beginCommandBuffer(bool enableTimestamps = true);
   void endCommandBuffer();
   virtual CommandBufferTiming submit() = 0;
   bool isRecording() const { return _recording; }
@@ -88,6 +88,7 @@ class CommandBuffer {
   void setRecording(bool recording) { _recording = recording; }
   BackendDevice& device() const { return _device; }
   CommandQueue& queue() const { return _queue; }
+  bool timestampEnabled() const { return _timestampEnabled; }
 
  protected:
   BackendDevice& _device;
@@ -99,6 +100,7 @@ class CommandBuffer {
   BackendSwapchain* _swapchain = nullptr;
   uint64_t _timelineValue = 0;
   bool _recording = false;
+  bool _timestampEnabled = true;
 };
 
 }  // namespace reng

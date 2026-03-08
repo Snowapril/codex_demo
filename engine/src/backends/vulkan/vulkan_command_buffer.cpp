@@ -75,7 +75,7 @@ void VulkanCommandBuffer::onBeginCommandBuffer() {
 
 void VulkanCommandBuffer::onEndCommandBuffer() {
   if (_recording) {
-    if (_timestampPool != VK_NULL_HANDLE) {
+    if (timestampEnabled() && _timestampPool != VK_NULL_HANDLE) {
       vkCmdWriteTimestamp(_commandBuffer,
                           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           _timestampPool, 1);
@@ -140,11 +140,13 @@ bool VulkanCommandBuffer::ensureRecording() {
     return false;
   }
   VulkanCommandQueue& vulkanQueue = static_cast<VulkanCommandQueue&>(queue());
-  _timestampPool = vulkanQueue.acquireTimestampPool(timelineValue());
-  if (_timestampPool != VK_NULL_HANDLE) {
-    vkCmdResetQueryPool(_commandBuffer, _timestampPool, 0, 2);
-    vkCmdWriteTimestamp(_commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                        _timestampPool, 0);
+  if (timestampEnabled()) {
+    _timestampPool = vulkanQueue.acquireTimestampPool(timelineValue());
+    if (_timestampPool != VK_NULL_HANDLE) {
+      vkCmdResetQueryPool(_commandBuffer, _timestampPool, 0, 2);
+      vkCmdWriteTimestamp(_commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                          _timestampPool, 0);
+    }
   }
   _recording = true;
   return true;

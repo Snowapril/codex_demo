@@ -171,6 +171,7 @@ PassHandle RenderGraph::addMLPass(
 }
 
 CompileReport RenderGraph::compile(const CompileOptions& options) {
+  _lastOptions = options;
   CompileReport report;
   report.passes.reserve(_passes.size());
 
@@ -306,7 +307,7 @@ ResolvedFrame RenderGraph::resolve(BackendDevice& device,
 
     if (pass.recordFn) {
       if (!cmd->isRecording()) {
-        cmd->beginCommandBuffer();
+        cmd->beginCommandBuffer(_lastOptions.enableTimestamps);
       }
       pass.recordFn(*cmd);
     }

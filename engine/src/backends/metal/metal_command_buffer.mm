@@ -111,24 +111,26 @@ void MetalCommandBuffer::onBeginCommandBuffer() {
   if (!commandBuffer) {
     return;
   }
-  MetalCommandQueue& metalQueue = static_cast<MetalCommandQueue&>(queue());
-  _timestampHeap = metalQueue.acquireTimestampHeap(timelineValue());
-  if (_timestampFrequency == 0) {
-    auto& metalDevice = static_cast<MetalDevice&>(device());
-    if (metalDevice.device()) {
-      _timestampFrequency = [metalDevice.device() queryTimestampFrequency];
-    }
-  }
   [commandBuffer beginCommandBufferWithAllocator:_allocator];
-  if (_timestampHeap) {
-    [_timestampHeap invalidateCounterRange:NSMakeRange(0, 2)];
-    [commandBuffer writeTimestampIntoHeap:_timestampHeap atIndex:0];
+  if (timestampEnabled()) {
+    MetalCommandQueue& metalQueue = static_cast<MetalCommandQueue&>(queue());
+    _timestampHeap = metalQueue.acquireTimestampHeap(timelineValue());
+    if (_timestampFrequency == 0) {
+      auto& metalDevice = static_cast<MetalDevice&>(device());
+      if (metalDevice.device()) {
+        _timestampFrequency = [metalDevice.device() queryTimestampFrequency];
+      }
+    }
+    if (_timestampHeap) {
+      [_timestampHeap invalidateCounterRange:NSMakeRange(0, 2)];
+      [commandBuffer writeTimestampIntoHeap:_timestampHeap atIndex:0];
+    }
   }
 }
 
 void MetalCommandBuffer::onEndCommandBuffer() {
   if (_commandBuffer) {
-    if (_timestampHeap) {
+    if (timestampEnabled() && _timestampHeap) {
       [_commandBuffer writeTimestampIntoHeap:_timestampHeap atIndex:1];
     }
     [_commandBuffer endCommandBuffer];
