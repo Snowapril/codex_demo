@@ -3,7 +3,6 @@
 #include <array>
 #include <algorithm>
 #include <cstdlib>
-#include <unistd.h>
 #include <string>
 #include <vector>
 
@@ -16,6 +15,7 @@
 
 #if defined(__APPLE__)
 #include <vulkan/vulkan_core.h>
+#include <unistd.h>
 #endif
 
 
