@@ -64,8 +64,10 @@ void Engine::tick(float deltaSeconds) {
   (void)_swapchain->acquireNextImage();
   auto resolved = _graph.resolve(*_device, *_resourcePool, *_swapchain);
   auto submitted = resolved.execute();
-  _pendingTimings.insert(_pendingTimings.end(), submitted.begin(),
-                         submitted.end());
+  if (!submitted.empty()) {
+    _pendingTimings.insert(_pendingTimings.end(), submitted.begin(),
+                           submitted.end());
+  }
   resolvePendingTimings();
   _swapchain->signalPresentReady();
   _swapchain->present();

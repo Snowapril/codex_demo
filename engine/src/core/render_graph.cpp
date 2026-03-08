@@ -75,10 +75,7 @@ std::vector<CommandBufferTiming> ResolvedFrame::execute() {
     if (!buffer) {
       continue;
     }
-    CommandBufferTiming timing = buffer->submit();
-    timing.queue =
-        i < _queueTypes.size() ? _queueTypes[i] : QueueType::Graphics;
-    timings.push_back(timing);
+    timings.push_back(buffer->submit());
   }
   return timings;
 }

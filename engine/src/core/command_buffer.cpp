@@ -5,6 +5,9 @@
 
 namespace reng {
 
+CommandBuffer::CommandBuffer(BackendDevice& device, CommandQueue& queue)
+    : _device(device), _queue(queue) {}
+
 void CommandBuffer::setContext(ResourcePool* resourcePool,
                                BackendSwapchain* swapchain) {
   _resourcePool = resourcePool;

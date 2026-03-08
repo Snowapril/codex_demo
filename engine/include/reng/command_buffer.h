@@ -8,6 +8,8 @@
 
 namespace reng {
 
+class BackendDevice;
+class CommandQueue;
 class BackendSwapchain;
 class ResourcePool;
 
@@ -21,6 +23,7 @@ struct CommandBufferTiming {
 
 class CommandBuffer {
  public:
+  explicit CommandBuffer(BackendDevice& device, CommandQueue& queue);
   virtual ~CommandBuffer() = default;
 
   void setContext(ResourcePool* resourcePool, BackendSwapchain* swapchain);
@@ -83,6 +86,12 @@ class CommandBuffer {
   BackendSwapchain* swapchain() const { return _swapchain; }
   uint64_t timelineValue() const { return _timelineValue; }
   void setRecording(bool recording) { _recording = recording; }
+  BackendDevice& device() const { return _device; }
+  CommandQueue& queue() const { return _queue; }
+
+ protected:
+  BackendDevice& _device;
+  CommandQueue& _queue;
 
  private:
   PassState _passState = PassState::None;
