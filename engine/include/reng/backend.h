@@ -30,6 +30,7 @@ class BackendSwapchain {
   virtual void present() = 0;
   virtual PixelFormat colorFormat() const = 0;
   virtual reng_nodiscard ResourceId acquireNextImage() = 0;
+  virtual ResourceId swapchainResourceId() const = 0;
 
   reng_inline uint32_t width() const { return _size.x; }
   reng_inline uint32_t height() const { return _size.y; }

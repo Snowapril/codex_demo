@@ -1,14 +1,25 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include "reng/resources.h"
 
 namespace reng {
 
+class BackendSwapchain;
+class ResourcePool;
+
 class CommandBuffer {
  public:
   virtual ~CommandBuffer() = default;
+
+  void setContext(ResourcePool* resourcePool, BackendSwapchain* swapchain);
+  void setTimelineValue(uint64_t value);
+  void beginCommandBuffer();
+  void endCommandBuffer();
+  virtual void submit() = 0;
+  bool isRecording() const { return _recording; }
 
   void beginBlitPass();
   void endBlitPass();
@@ -37,6 +48,8 @@ class CommandBuffer {
     ML,
   };
 
+  virtual void onBeginCommandBuffer() = 0;
+  virtual void onEndCommandBuffer() = 0;
   virtual void onBeginBlitPass() = 0;
   virtual void onEndBlitPass() = 0;
   virtual void onCopyTexture(const ResourceId& src, const ResourceId& dst) = 0;
@@ -57,9 +70,17 @@ class CommandBuffer {
 
   PassState passState() const { return _passState; }
   void setPassState(PassState state) { _passState = state; }
+  ResourcePool* resourcePool() const { return _resourcePool; }
+  BackendSwapchain* swapchain() const { return _swapchain; }
+  uint64_t timelineValue() const { return _timelineValue; }
+  void setRecording(bool recording) { _recording = recording; }
 
  private:
   PassState _passState = PassState::None;
+  ResourcePool* _resourcePool = nullptr;
+  BackendSwapchain* _swapchain = nullptr;
+  uint64_t _timelineValue = 0;
+  bool _recording = false;
 };
 
 }  // namespace reng

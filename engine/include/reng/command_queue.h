@@ -36,6 +36,7 @@ class CommandQueue {
 
   QueueTimeline* timeline() const { return _timeline.get(); }
   CommandBufferPool* commandBufferPool() const { return _commandBufferPool.get(); }
+  QueueType queueType() const { return _type; }
 
  protected:
   BackendDevice& device() const { return *_device; }

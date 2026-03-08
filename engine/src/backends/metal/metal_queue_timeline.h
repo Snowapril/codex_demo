@@ -12,7 +12,7 @@ class MetalQueueTimeline : public QueueTimeline {
   ~MetalQueueTimeline() override = default;
 
   id<MTLSharedEvent> event() const { return _event; }
-  uint64_t encodeSignal(id<MTLCommandBuffer> commandBuffer);
+  void signalQueue(id<MTL4CommandQueue> queue, uint64_t value);
 
  protected:
   bool initInner() override final;

@@ -28,10 +28,17 @@ class VulkanSwapchain : public BackendSwapchain {
   void present() override;
   PixelFormat colorFormat() const override;
   ResourceId acquireNextImage() override;
+  ResourceId swapchainResourceId() const override { return _swapchainResource; }
 
   VkSwapchainKHR swapchain() const { return _swapchain; }
   VkFormat format() const { return _format; }
   const std::vector<VkImageView>& imageViews() const { return _imageViews; }
+  VkImageView currentImageView() const {
+    if (_imageViews.empty()) {
+      return VK_NULL_HANDLE;
+    }
+    return _imageViews[_acquiredImageIndex];
+  }
 
  private:
   bool createSwapchainResources(const SwapchainDesc& desc);

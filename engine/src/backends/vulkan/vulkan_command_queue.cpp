@@ -19,7 +19,7 @@ std::unique_ptr<QueueTimeline> VulkanCommandQueue::createTimeline(
 std::unique_ptr<CommandBufferPool> VulkanCommandQueue::createCommandBufferPool(
     BackendDevice& device) {
   return std::make_unique<VulkanCommandBufferPool>(
-      static_cast<VulkanDevice&>(device));
+      *this, static_cast<VulkanDevice&>(device));
 }
 
 bool VulkanCommandQueue::initInner() {

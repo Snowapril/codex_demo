@@ -5,7 +5,41 @@
 
 namespace reng {
 
+void CommandBuffer::setContext(ResourcePool* resourcePool,
+                               BackendSwapchain* swapchain) {
+  _resourcePool = resourcePool;
+  _swapchain = swapchain;
+}
+
+void CommandBuffer::setTimelineValue(uint64_t value) {
+  _timelineValue = value;
+}
+
+void CommandBuffer::beginCommandBuffer() {
+  if (isRecording()) {
+    RengLogger::logWarning("beginCommandBuffer called while recording");
+    return;
+  }
+  setRecording(true);
+  onBeginCommandBuffer();
+}
+
+void CommandBuffer::endCommandBuffer() {
+  if (!isRecording()) {
+    RengLogger::logWarning("endCommandBuffer called without recording");
+    return;
+  }
+  if (passState() != PassState::None) {
+    RengLogger::logWarning("endCommandBuffer called with active pass");
+    return;
+  }
+  onEndCommandBuffer();
+  setRecording(false);
+}
+
 void CommandBuffer::beginBlitPass() {
+  RENG_ASSERT(isRecording(),
+              "beginBlitPass requires beginCommandBuffer to be called");
   if (passState() != PassState::None) {
     RengLogger::logWarning("beginBlitPass called while another pass is active");
     return;
@@ -43,6 +77,8 @@ void CommandBuffer::uploadTexture(const ResourceId& texture, size_t bytes) {
 }
 
 void CommandBuffer::beginRenderPass(const FramebufferDesc& framebuffer) {
+  RENG_ASSERT(isRecording(),
+              "beginRenderPass requires beginCommandBuffer to be called");
   if (passState() != PassState::None) {
     RengLogger::logWarning(
         "beginRenderPass called while another pass is active");
@@ -68,6 +104,8 @@ void CommandBuffer::draw(uint32_t vertexCount, uint32_t instanceCount) {
 }
 
 void CommandBuffer::beginComputePass() {
+  RENG_ASSERT(isRecording(),
+              "beginComputePass requires beginCommandBuffer to be called");
   if (passState() != PassState::None) {
     RengLogger::logWarning(
         "beginComputePass called while another pass is active");
@@ -94,6 +132,8 @@ void CommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z) {
 }
 
 void CommandBuffer::beginMLPass() {
+  RENG_ASSERT(isRecording(),
+              "beginMLPass requires beginCommandBuffer to be called");
   if (passState() != PassState::None) {
     RengLogger::logWarning("beginMLPass called while another pass is active");
     return;

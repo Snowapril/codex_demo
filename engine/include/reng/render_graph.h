@@ -13,6 +13,8 @@
 namespace reng {
 
 class BackendDevice;
+class BackendSwapchain;
+class ResourcePool;
 
 enum class QueueType : uint8_t {
   Graphics,
@@ -129,7 +131,9 @@ class RenderGraph {
                        const std::function<void(MLPassBuilder&)>& record);
 
   CompileReport compile(const CompileOptions& options = {});
-  ResolvedFrame resolve(BackendDevice& device);
+  ResolvedFrame resolve(BackendDevice& device,
+                        ResourcePool& resources,
+                        BackendSwapchain& swapchain);
 
  private:
   struct PassDesc {

@@ -14,7 +14,7 @@ std::unique_ptr<QueueTimeline> MetalCommandQueue::createTimeline(
 std::unique_ptr<CommandBufferPool> MetalCommandQueue::createCommandBufferPool(
     BackendDevice& device) {
   return std::make_unique<MetalCommandBufferPool>(
-      static_cast<MetalDevice&>(device));
+      *this, static_cast<MetalDevice&>(device));
 }
 
 bool MetalCommandQueue::initInner() {

@@ -64,8 +64,11 @@ ResolvedFrame::ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffe
     : _buffers(std::move(buffers)) {}
 
 void ResolvedFrame::execute() {
-  // Placeholder: in a full implementation this would submit to platform queues.
-  // We intentionally leave this as a no-op for now.
+  for (auto& buffer : _buffers) {
+    if (buffer) {
+      buffer->submit();
+    }
+  }
 }
 
 void RenderGraph::beginFrame() {
@@ -218,7 +221,9 @@ CompileReport RenderGraph::compile(const CompileOptions& options) {
   return report;
 }
 
-ResolvedFrame RenderGraph::resolve(BackendDevice& device) {
+ResolvedFrame RenderGraph::resolve(BackendDevice& device,
+                                   ResourcePool& resources,
+                                   BackendSwapchain& swapchain) {
   if (_lastReport.passes.empty()) {
     compile();
   }
@@ -284,10 +289,16 @@ ResolvedFrame RenderGraph::resolve(BackendDevice& device) {
       if (!queue || !queue->commandBufferPool()) {
         continue;
       }
-      cmd = queue->commandBufferPool()->allocate(assignedQueue);
+      cmd = queue->commandBufferPool()->allocate();
+      if (cmd) {
+        cmd->setContext(&resources, &swapchain);
+      }
     }
 
     if (pass.recordFn) {
+      if (!cmd->isRecording()) {
+        cmd->beginCommandBuffer();
+      }
       pass.recordFn(*cmd);
     }
   }
@@ -296,6 +307,9 @@ ResolvedFrame RenderGraph::resolve(BackendDevice& device) {
   buffers.reserve(queueBuffers.size());
   for (auto& entry : queueBuffers) {
     if (entry.second) {
+      if (entry.second->isRecording()) {
+        entry.second->endCommandBuffer();
+      }
       buffers.push_back(std::move(entry.second));
     }
   }

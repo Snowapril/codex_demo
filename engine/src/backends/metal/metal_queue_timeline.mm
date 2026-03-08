@@ -18,4 +18,12 @@ bool MetalQueueTimeline::initInner() {
 
 void MetalQueueTimeline::shutdownInner() { _event = nil; }
 
+void MetalQueueTimeline::signalQueue(id<MTL4CommandQueue> queue,
+                                     uint64_t value) {
+  if (!queue || !_event) {
+    return;
+  }
+  [queue signalEvent:_event value:value];
+}
+
 }  // namespace reng
