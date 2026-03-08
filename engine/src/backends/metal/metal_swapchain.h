@@ -20,6 +20,9 @@ class MetalSwapchain : public BackendSwapchain {
   PixelFormat colorFormat() const override { return _desc.colorFormat; }
   ResourceId acquireNextImage() override;
   ResourceId swapchainResourceId() const override { return _swapchainResource; }
+  void setCurrentDrawable(void* drawable) override {
+    _currentDrawable = (__bridge id<CAMetalDrawable>)drawable;
+  }
   id<MTLTexture> currentTexture() const {
     return _currentDrawable ? _currentDrawable.texture : nil;
   }

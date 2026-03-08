@@ -29,6 +29,7 @@ class VulkanSwapchain : public BackendSwapchain {
   PixelFormat colorFormat() const override;
   ResourceId acquireNextImage() override;
   ResourceId swapchainResourceId() const override { return _swapchainResource; }
+  void setCurrentDrawable(void* drawable) override { (void)drawable; }
 
   VkSwapchainKHR swapchain() const { return _swapchain; }
   VkFormat format() const { return _format; }

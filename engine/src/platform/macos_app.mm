@@ -9,6 +9,7 @@
 #include "reng/engine.h"
 #include "reng/logger.h"
 #include "reng/platform.h"
+#include "backends/metal/metal_swapchain.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, CAMetalDisplayLinkDelegate>
 @end
@@ -69,7 +70,7 @@
     return;
   }
 
-  if (@available(macOS 14.0, *)) {
+  if (_desc.backend == reng::Backend::Metal && @available(macOS 14.0, *)) {
     _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
     _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
     _displayLink.delegate = self;
@@ -96,7 +97,11 @@
 - (void)metalDisplayLink:(CAMetalDisplayLink*)link
              needsUpdate:(CAMetalDisplayLinkUpdate*)update {
   (void)link;
-  (void)update;
+  if (_desc.backend == reng::Backend::Metal) {
+    auto* swapchain =
+        static_cast<reng::MetalSwapchain*>(_engine->swapchain());
+    swapchain->setCurrentDrawable((__bridge void*)update.drawable);
+  }
   [self tick];
 }
 
@@ -117,6 +122,15 @@
   CFTimeInterval now = CACurrentMediaTime();
   float delta = (float)(now - _lastTime);
   _lastTime = now;
+
+  if (_desc.backend == reng::Backend::Metal && !_displayLink) {
+    id<CAMetalDrawable> drawable = [_layer nextDrawable];
+    if (drawable) {
+      auto* swapchain =
+          static_cast<reng::MetalSwapchain*>(_engine->swapchain());
+      swapchain->setCurrentDrawable((__bridge void*)drawable);
+    }
+  }
 
   _engine->tick(delta);
   if (_callbacks->shouldExit()) {

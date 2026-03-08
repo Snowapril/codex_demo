@@ -24,9 +24,8 @@ bool MetalSwapchain::recreate(const SwapchainDesc& desc) {
 }
 
 ResourceId MetalSwapchain::acquireNextImage() {
-  _currentDrawable = [_layer nextDrawable];
   if (!_currentDrawable) {
-    RengLogger::logError("Failed to acquire CAMetalDrawable");
+    RengLogger::logError("Missing CAMetalDrawable before acquire");
   }
   return _swapchainResource;
 }
