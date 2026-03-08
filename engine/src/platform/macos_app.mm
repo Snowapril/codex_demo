@@ -27,10 +27,6 @@
   bool _didStart;
 }
 
-- (void)dealloc {
-  reng::RengLogger::logInfo("AppDelegate dealloc");
-}
-
 - (instancetype)initWithDesc:(const reng::AppDesc&)desc
                    callbacks:(reng::AppCallbacks*)callbacks {
   self = [super init];
@@ -90,13 +86,16 @@
     return;
   }
 
-  if (_desc.backend == reng::Backend::Metal && @available(macOS 14.0, *)) {
-    _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
-    _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
-    _displayLink.delegate = self;
-    [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
-                       forMode:NSRunLoopCommonModes];
-  } else {
+  if (@available(macOS 14.0, *)) {
+    if (_desc.backend == reng::Backend::Metal) {
+      _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
+      _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
+      _displayLink.delegate = self;
+      [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
+                         forMode:NSRunLoopCommonModes];
+    }
+  }
+  if (!_displayLink) {
     _fallbackTimer = [NSTimer
         scheduledTimerWithTimeInterval:(1.0 / 60.0)
                                 target:self

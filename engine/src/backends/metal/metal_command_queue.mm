@@ -57,13 +57,15 @@ id<MTL4CounterHeap> MetalCommandQueue::acquireTimestampHeap(
   MTL4CounterHeapDescriptor* desc = [[MTL4CounterHeapDescriptor alloc] init];
   desc.type = MTL4CounterHeapTypeTimestamp;
   desc.count = 2;
-  id<MTL4CounterHeap> heap = [mtlDevice newCounterHeapWithDescriptor:desc];
+  NSError* error = nil;
+  id<MTL4CounterHeap> heap = [mtlDevice newCounterHeapWithDescriptor:desc error:&error];
   if (!heap) {
     RengLogger::logWarning("Failed to create Metal timestamp counter heap");
     return nil;
   }
   _timestampHeaps.push_back({heap, timelineValue, true});
   _timestampHeapByValue[timelineValue] = _timestampHeaps.size() - 1;
+  RengLogger::logInfo("Timestamp heap created (queue type : {}, #heaps : {})", (uint8_t)type(), _timestampHeaps.size() );
   return heap;
 }
 
