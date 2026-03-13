@@ -301,7 +301,8 @@ bool VulkanDevice::initializeDevice() {
 
   uint32_t desiredCopyCount = _desc.copyQueueCount > 0 ? _desc.copyQueueCount : 1;
   uint32_t availableQueues = props[_graphicsQueueFamily].queueCount;
-  uint32_t queueCount = std::min(availableQueues, 1u + desiredCopyCount);
+  uint32_t queueCount =
+      (std::min)(availableQueues, 1u + desiredCopyCount);
   std::vector<float> priorities(queueCount, 1.0f);
 
   VkDeviceQueueCreateInfo queueInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
