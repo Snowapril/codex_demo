@@ -1,49 +1,61 @@
-#include <iostream>
+#include "reng/app.h"
+#include "reng/engine.h"
+#include "reng/logger.h"
 
-#include "reng/render_graph.h"
+class TriangleApp : public reng::AppCallbacks {
+ public:
+  TriangleApp() = default;
 
-int main() {
-  using namespace reng;
+  bool onInit(reng::Engine& engine) override {
+    reng::ResourcePool* pool = engine.resourcePool();
+    pool->addSwapchainTexture(swapchainColor, reng::TextureCreateDesc{
+        .width = engine.swapchain()->width(),
+        .height = engine.swapchain()->height(),
+        .format = engine.swapchain()->colorFormat(),
+        .slices = 1,
+        .mips = 1,
+        .type = reng::TextureType::Texture2D,
+        .usage = reng::TextureUsage::RenderTarget | reng::TextureUsage::Present,
+    });
+    return true;
+  }
 
-  RenderGraph graph;
-  graph.beginFrame();
+  void onUpdateRender(reng::RenderGraph& graph) override { (void)graph; }
 
-  ResourceId uploadBuffer{1, ResourceKind::Buffer, "upload_buffer"};
-  ResourceId texture{2, ResourceKind::Texture, "color_tex"};
+  void onRender(reng::RenderGraph& graph) override {
+    // Empty render pass: the backend will clear/present.
+    reng::FramebufferDesc framebuffer;
+    framebuffer.colorAttachments.push_back({swapchainColor,
+                                            reng::LoadAction::Clear,
+                                            reng::StoreAction::Store});
+    graph.addRenderPass("Triangle", framebuffer,
+                        {
+                            {swapchainColor,
+                             reng::TextureAccessType::RenderTarget},
+                        },
+                        reng::QueueType::Graphics,
+                        [](reng::RenderPassBuilder& pass) { pass.draw(0); });
+  }
 
-  graph.addBlitPass(
-      "Upload",
-      {
-          {uploadBuffer, AccessType::Write, TextureUsage::Undefined},
-          {texture, AccessType::Write, TextureUsage::TransferDst},
-      },
-      QueueType::Transfer, [](BlitPassBuilder& pass) {
-        pass.uploadBuffer("upload_buffer", 1024);
-        pass.uploadTexture("color_tex", 4096);
-      });
+ private:
+  const reng::ResourceId swapchainColor{
+      1, reng::ResourceKind::Texture, "swapchain_color"};
+};
 
-  graph.addRenderPass("Render", "framebuffer_main",
-                      {
-                          {texture, AccessType::Read, TextureUsage::Sampled},
-                      },
-                      QueueType::Graphics,
-                      [](RenderPassBuilder& pass) { pass.draw(3, 1); });
+int main(int argc, char** argv) {
+  reng::RengLogger::init("logs/triangle.log");
+  reng::RengLogger::logInfo("Launching triangle sample");
+  reng::AppDesc desc;
+#if defined(__APPLE__)
+  desc.backend = reng::Backend::Metal;
+#else
+  desc.backend = reng::Backend::Vulkan;
+#endif
+  desc.title = "Triangle Sample";
+  desc.swapchain.width = 800;
+  desc.swapchain.height = 600;
+  desc.swapchain.colorFormat = reng::PixelFormat::Bgra8Unorm;
 
-  graph.addComputePass(
-      "Compute",
-      {
-          {texture, AccessType::ReadWrite, TextureUsage::Storage},
-      },
-      QueueType::Compute,
-      [](ComputePassBuilder& pass) { pass.dispatch(8, 8, 1); });
-
-  auto report = graph.compile();
-
-  std::cout << "Compile report: " << report.passes.size() << " passes, "
-            << report.dependencies.size() << " deps\n";
-
-  auto frame = graph.resolve();
-  frame.execute();
-
-  return 0;
+  TriangleApp app;
+  return reng::runApp(argc, argv, desc, app);
 }

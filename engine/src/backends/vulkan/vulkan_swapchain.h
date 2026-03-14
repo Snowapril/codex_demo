@@ -6,6 +6,7 @@
 
 #include "reng/app.h"
 #include "reng/backend.h"
+#include "vulkan_command_queue.h"
 #include "vulkan_device.h"
 
 namespace reng {
@@ -19,33 +20,61 @@ class VulkanSwapchain : public BackendSwapchain {
   VulkanSwapchain& operator=(VulkanSwapchain&&) = delete;
 
   bool init(VulkanDevice& device, const SwapchainDesc& desc);
+  bool init(VulkanDevice& device, VulkanCommandQueue* presentQueue,
+            const SwapchainDesc& desc);
   bool recreate(const SwapchainDesc& desc) override;
   void shutdown(VkDevice device);
+  void signalPresentReady() override {}
   void present() override;
+  PixelFormat colorFormat() const override;
+  ResourceId acquireNextImage() override;
+  ResourceId swapchainResourceId() const override { return _swapchainResource; }
+  void setCurrentDrawable(void* drawable) override { (void)drawable; }
 
   VkSwapchainKHR swapchain() const { return _swapchain; }
   VkFormat format() const { return _format; }
-  VkExtent2D extent() const { return _extent; }
   const std::vector<VkImageView>& imageViews() const { return _imageViews; }
+  VkImage currentImage() const {
+    if (_images.empty()) {
+      return VK_NULL_HANDLE;
+    }
+    return _images[_acquiredImageIndex];
+  }
+  VkImageLayout currentImageLayout() const {
+    if (_imageLayouts.empty()) {
+      return VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    return _imageLayouts[_acquiredImageIndex];
+  }
+  void setCurrentImageLayout(VkImageLayout layout) {
+    if (_imageLayouts.empty()) {
+      return;
+    }
+    _imageLayouts[_acquiredImageIndex] = layout;
+  }
+  VkImageView currentImageView() const {
+    if (_imageViews.empty()) {
+      return VK_NULL_HANDLE;
+    }
+    return _imageViews[_acquiredImageIndex];
+  }
 
  private:
-  void recordCommandBuffer(uint32_t imageIndex);
   bool createSwapchainResources(const SwapchainDesc& desc);
   void destroySwapchainResources(VkDevice device);
 
   VulkanDevice* _device = nullptr;
+  VulkanCommandQueue* _presentQueue = nullptr;
   VkSwapchainKHR _swapchain = VK_NULL_HANDLE;
   VkFormat _format = VK_FORMAT_B8G8R8A8_UNORM;
   VkExtent2D _extent{};
   std::vector<VkImage> _images;
   std::vector<VkImageView> _imageViews;
-  VkRenderPass _renderPass = VK_NULL_HANDLE;
-  std::vector<VkFramebuffer> _framebuffers;
-  VkCommandPool _commandPool = VK_NULL_HANDLE;
-  std::vector<VkCommandBuffer> _commandBuffers;
-  VkSemaphore _imageAvailable = VK_NULL_HANDLE;
-  VkSemaphore _renderFinished = VK_NULL_HANDLE;
+  std::vector<VkImageLayout> _imageLayouts;
   VkFence _inFlight = VK_NULL_HANDLE;
+  uint32_t _acquiredImageIndex = 0;
+  bool _hasAcquiredImage = false;
+  ResourceId _swapchainResource{1, ResourceKind::Texture, "swapchain_color"};
 };
 
 }  // namespace reng

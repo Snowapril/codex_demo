@@ -9,8 +9,10 @@
 #include "reng/engine.h"
 #include "reng/logger.h"
 #include "reng/platform.h"
+#include "backends/metal/metal_swapchain.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, CAMetalDisplayLinkDelegate>
+- (void)startIfNeeded;
 @end
 
 @implementation AppDelegate {
@@ -22,21 +24,34 @@
   reng::AppCallbacks* _callbacks;
   reng::AppDesc _desc;
   CFTimeInterval _lastTime;
+  bool _didStart;
 }
 
 - (instancetype)initWithDesc:(const reng::AppDesc&)desc
                    callbacks:(reng::AppCallbacks*)callbacks {
   self = [super init];
   if (self) {
+    reng::RengLogger::logInfo("AppDelegate initWithDesc");
     _callbacks = callbacks;
     _desc = desc;
     _lastTime = CACurrentMediaTime();
+    _didStart = false;
   }
   return self;
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
   reng::RengLogger::logInfo("Starting macOS app");
+  reng::RengLogger::logInfo("applicationDidFinishLaunching enter");
+  [self startIfNeeded];
+}
+
+- (void)startIfNeeded {
+  if (_didStart) {
+    return;
+  }
+  _didStart = true;
+  reng::RengLogger::logInfo("AppDelegate start");
   NSRect frame =
       NSMakeRect(100, 100, _desc.swapchain.width, _desc.swapchain.height);
   _window = [[NSWindow alloc]
@@ -62,7 +77,9 @@
   context.platform = reng::PlatformKind::MacOS;
   context.macos.nsWindow = (__bridge void*)_window;
   context.macos.metalLayer = (__bridge void*)_layer;
+  reng::RengLogger::logInfo("Engine::create call from macOS app");
   _engine = reng::Engine::create(_desc, *_callbacks, context);
+  reng::RengLogger::logInfo("Engine::create returned");
   if (!_engine) {
     reng::RengLogger::logError("Failed to initialize engine");
     [[NSApplication sharedApplication] terminate:nil];
@@ -70,12 +87,15 @@
   }
 
   if (@available(macOS 14.0, *)) {
-    _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
-    _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
-    _displayLink.delegate = self;
-    [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
-                       forMode:NSRunLoopCommonModes];
-  } else {
+    if (_desc.backend == reng::Backend::Metal) {
+      _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
+      _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
+      _displayLink.delegate = self;
+      [_displayLink addToRunLoop:[NSRunLoop mainRunLoop]
+                         forMode:NSRunLoopCommonModes];
+    }
+  }
+  if (!_displayLink) {
     _fallbackTimer = [NSTimer
         scheduledTimerWithTimeInterval:(1.0 / 60.0)
                                 target:self
@@ -96,7 +116,11 @@
 - (void)metalDisplayLink:(CAMetalDisplayLink*)link
              needsUpdate:(CAMetalDisplayLinkUpdate*)update {
   (void)link;
-  (void)update;
+  if (_desc.backend == reng::Backend::Metal) {
+    auto* swapchain =
+        static_cast<reng::MetalSwapchain*>(_engine->swapchain());
+    swapchain->setCurrentDrawable((__bridge void*)update.drawable);
+  }
   [self tick];
 }
 
@@ -118,6 +142,15 @@
   float delta = (float)(now - _lastTime);
   _lastTime = now;
 
+  if (_desc.backend == reng::Backend::Metal && !_displayLink) {
+    id<CAMetalDrawable> drawable = [_layer nextDrawable];
+    if (drawable) {
+      auto* swapchain =
+          static_cast<reng::MetalSwapchain*>(_engine->swapchain());
+      swapchain->setCurrentDrawable((__bridge void*)drawable);
+    }
+  }
+
   _engine->tick(delta);
   if (_callbacks->shouldExit()) {
     [[NSApplication sharedApplication] terminate:nil];
@@ -133,6 +166,7 @@
 namespace reng {
 
 int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
+  RengLogger::logInfo("macOS runAppPlatform enter");
   if (desc.backend != Backend::Metal && desc.backend != Backend::Vulkan) {
     RengLogger::logError("Requested backend not supported on macOS");
     return 1;
@@ -145,12 +179,41 @@ int runAppPlatform(const AppDesc& desc, AppCallbacks& callbacks) {
 #endif
   @autoreleasepool {
     NSApplication* app = [NSApplication sharedApplication];
+    NSString* appName =
+        desc.title ? [NSString stringWithUTF8String:desc.title]
+                   : [[NSProcessInfo processInfo] processName];
+    NSMenu* mainMenu = [[NSMenu alloc] init];
+    NSMenuItem* appMenuItem = [[NSMenuItem alloc] init];
+    [mainMenu addItem:appMenuItem];
+    [app setMainMenu:mainMenu];
+
+    NSMenu* appMenu = [[NSMenu alloc] initWithTitle:@""];
+    NSString* quitTitle =
+        [NSString stringWithFormat:@"Quit %@", appName];
+    NSMenuItem* quitItem =
+        [[NSMenuItem alloc] initWithTitle:quitTitle
+                                   action:@selector(terminate:)
+                            keyEquivalent:@"q"];
+    [quitItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
+    [appMenu addItem:quitItem];
+    [appMenuItem setSubmenu:appMenu];
+
     AppDelegate* delegate = [[AppDelegate alloc] initWithDesc:desc
                                                     callbacks:&callbacks];
+    RengLogger::logInfo("Setting NSApplication delegate");
     app.delegate = delegate;
     [app setActivationPolicy:NSApplicationActivationPolicyRegular];
     [app activateIgnoringOtherApps:YES];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+                     RengLogger::logInfo("Main runloop heartbeat");
+                   });
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [delegate startIfNeeded];
+    });
+    RengLogger::logInfo("NSApplication run start");
     [app run];
+    RengLogger::logInfo("NSApplication run end");
   }
   return 0;
 }

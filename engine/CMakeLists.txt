@@ -5,11 +5,13 @@ add_library(reng_core
   src/core/device.cpp
   src/core/engine.cpp
   src/core/logger.cpp
+  src/core/resource_pool.cpp
   src/platform/app.cpp
 )
 
 target_include_directories(reng_core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/glm
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
@@ -38,7 +40,12 @@ if(APPLE)
   target_sources(reng_core PRIVATE
     src/platform/macos_app.mm
     src/platform/backend_factory_macos.mm
+    src/backends/metal/metal_command_queue.mm
+    src/backends/metal/metal_command_buffer.mm
+    src/backends/metal/metal_command_buffer_pool.mm
     src/backends/metal/metal_device.mm
+    src/backends/metal/metal_queue_timeline.mm
+    src/backends/metal/metal_resources.mm
     src/backends/metal/metal_swapchain.mm
     src/backends/metal/metal_utils.mm
   )
@@ -57,7 +64,12 @@ endif()
 
 if(APPLE AND RENG_ENABLE_VULKAN)
   target_sources(reng_core PRIVATE
+    src/backends/vulkan/vulkan_command_buffer.cpp
+    src/backends/vulkan/vulkan_command_buffer_pool.cpp
+    src/backends/vulkan/vulkan_command_queue.cpp
     src/backends/vulkan/vulkan_device.cpp
+    src/backends/vulkan/vulkan_queue_timeline.cpp
+    src/backends/vulkan/vulkan_resources.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp
   )
@@ -69,7 +81,12 @@ if(WIN32)
   target_sources(reng_core PRIVATE
     src/platform/windows_app.cpp
     src/platform/backend_factory_windows.cpp
+    src/backends/vulkan/vulkan_command_buffer.cpp
+    src/backends/vulkan/vulkan_command_buffer_pool.cpp
+    src/backends/vulkan/vulkan_command_queue.cpp
     src/backends/vulkan/vulkan_device.cpp
+    src/backends/vulkan/vulkan_queue_timeline.cpp
+    src/backends/vulkan/vulkan_resources.cpp
     src/backends/vulkan/vulkan_swapchain.cpp
     src/backends/vulkan/vulkan_utils.cpp
   )

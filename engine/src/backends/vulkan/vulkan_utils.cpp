@@ -27,18 +27,34 @@ VkFormat toVkFormat(PixelFormat format) {
   }
 }
 
+PixelFormat fromVkFormat(VkFormat format) {
+  switch (format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+      return PixelFormat::Bgra8Unorm;
+    default:
+      return PixelFormat::Bgra8Unorm;
+  }
+}
+
 std::vector<const char*> gatherDeviceExtensions(VkPhysicalDevice device) {
   std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
   uint32_t count = 0;
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
   std::vector<VkExtensionProperties> props(count);
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, props.data());
+  bool hasDynamicRendering = false;
   for (const auto& prop : props) {
     if (std::string(prop.extensionName) ==
         VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) {
       extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-      break;
     }
+    if (std::string(prop.extensionName) ==
+        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) {
+      hasDynamicRendering = true;
+    }
+  }
+  if (hasDynamicRendering) {
+    extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
   }
   return extensions;
 }

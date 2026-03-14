@@ -1,8 +1,10 @@
 #include "reng/render_graph.h"
 
+#include <array>
 #include <unordered_map>
 
 #include "reng/command_buffer.h"
+#include "reng/backend.h"
 
 namespace reng {
 
@@ -21,22 +23,31 @@ QueueType defaultQueueForPass(PassType type) {
   }
 }
 
-bool isWriteAccess(AccessType access) {
-  return access == AccessType::Write || access == AccessType::ReadWrite;
+bool isWriteAccess(const ResourceAccess& access) {
+  if (std::holds_alternative<BufferAccessType>(access.access)) {
+    auto mode = std::get<BufferAccessType>(access.access);
+    return mode == BufferAccessType::Write ||
+           mode == BufferAccessType::ReadWrite;
+  }
+  auto mode = std::get<TextureAccessType>(access.access);
+  return mode == TextureAccessType::RenderTarget ||
+         mode == TextureAccessType::Storage ||
+         mode == TextureAccessType::TransferDst;
 }
+
 }  // namespace
 
-void BlitPassBuilder::copyTexture(const std::string& src,
-                                  const std::string& dst) {
+void BlitPassBuilder::copyTexture(const ResourceId& src,
+                                  const ResourceId& dst) {
   _cmd.copyTexture(src, dst);
 }
 
-void BlitPassBuilder::uploadBuffer(const std::string& name, size_t bytes) {
-  _cmd.uploadBuffer(name, bytes);
+void BlitPassBuilder::uploadBuffer(const ResourceId& buffer, size_t bytes) {
+  _cmd.uploadBuffer(buffer, bytes);
 }
 
-void BlitPassBuilder::uploadTexture(const std::string& name, size_t bytes) {
-  _cmd.uploadTexture(name, bytes);
+void BlitPassBuilder::uploadTexture(const ResourceId& texture, size_t bytes) {
+  _cmd.uploadTexture(texture, bytes);
 }
 
 void RenderPassBuilder::draw(uint32_t vertexCount, uint32_t instanceCount) {
@@ -51,12 +62,22 @@ void MLPassBuilder::dispatch(uint32_t x, uint32_t y, uint32_t z) {
   _cmd.dispatchML(x, y, z);
 }
 
-ResolvedFrame::ResolvedFrame(std::vector<CommandBuffer>&& buffers)
-    : _buffers(std::move(buffers)) {}
+ResolvedFrame::ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers,
+                             std::vector<QueueType>&& queueTypes)
+    : _buffers(std::move(buffers)),
+      _queueTypes(std::move(queueTypes)) {}
 
-void ResolvedFrame::execute() {
-  // Placeholder: in a full implementation this would submit to platform queues.
-  // We intentionally leave this as a no-op for now.
+std::vector<CommandBufferTiming> ResolvedFrame::execute() {
+  std::vector<CommandBufferTiming> timings;
+  timings.reserve(_buffers.size());
+  for (size_t i = 0; i < _buffers.size(); ++i) {
+    auto& buffer = _buffers[i];
+    if (!buffer) {
+      continue;
+    }
+    timings.push_back(buffer->submit());
+  }
+  return timings;
 }
 
 void RenderGraph::beginFrame() {
@@ -86,7 +107,7 @@ PassHandle RenderGraph::addBlitPass(
 }
 
 PassHandle RenderGraph::addRenderPass(
-    const std::string& name, const std::string& framebufferName,
+    const std::string& name, const FramebufferDesc& framebuffer,
     const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
     const std::function<void(RenderPassBuilder&)>& record) {
   PassHandle handle{static_cast<uint32_t>(_passes.size())};
@@ -96,8 +117,9 @@ PassHandle RenderGraph::addRenderPass(
   desc.type = PassType::Render;
   desc.preferredQueue = preferredQueue;
   desc.accesses = accesses;
-  desc.recordFn = [record, framebufferName](CommandBuffer& cmd) {
-    cmd.beginRenderPass(framebufferName);
+  desc.framebuffer = framebuffer;
+  desc.recordFn = [record, framebuffer](CommandBuffer& cmd) {
+    cmd.beginRenderPass(framebuffer);
     RenderPassBuilder builder(cmd);
     record(builder);
     cmd.endRenderPass();
@@ -149,6 +171,7 @@ PassHandle RenderGraph::addMLPass(
 }
 
 CompileReport RenderGraph::compile(const CompileOptions& options) {
+  _lastOptions = options;
   CompileReport report;
   report.passes.reserve(_passes.size());
 
@@ -174,7 +197,7 @@ CompileReport RenderGraph::compile(const CompileOptions& options) {
     bool hasDependency = false;
     for (const auto& access : pass.accesses) {
       const uint32_t key = access.resource.value;
-      const bool write = isWriteAccess(access.access);
+      const bool write = isWriteAccess(access);
 
       if (lastWriter.count(key)) {
         PassHandle from = lastWriter[key];
@@ -208,17 +231,107 @@ CompileReport RenderGraph::compile(const CompileOptions& options) {
   return report;
 }
 
-ResolvedFrame RenderGraph::resolve() {
-  std::vector<CommandBuffer> buffers;
-  buffers.reserve(_passes.size());
-  for (const auto& pass : _passes) {
-    CommandBuffer cmd;
-    if (pass.recordFn) {
-      pass.recordFn(cmd);
-    }
-    buffers.push_back(std::move(cmd));
+ResolvedFrame RenderGraph::resolve(BackendDevice& device,
+                                   ResourcePool& resources,
+                                   BackendSwapchain& swapchain) {
+  if (_lastReport.passes.empty()) {
+    compile();
   }
-  return ResolvedFrame(std::move(buffers));
+
+  const size_t passCount = _passes.size();
+  std::vector<bool> graphicsPass(passCount, false);
+  for (const auto& pass : _passes) {
+    if (pass.preferredQueue == QueueType::Graphics ||
+        pass.type == PassType::Render) {
+      graphicsPass[pass.handle.index] = true;
+    }
+  }
+
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (const auto& pass : _passes) {
+      if (graphicsPass[pass.handle.index]) {
+        continue;
+      }
+      if (pass.preferredQueue == QueueType::Compute ||
+          pass.preferredQueue == QueueType::Transfer) {
+        for (const auto& edge : _lastReport.dependencies) {
+          const bool linked =
+              (edge.from.index == pass.handle.index &&
+               graphicsPass[edge.to.index]) ||
+              (edge.to.index == pass.handle.index &&
+               graphicsPass[edge.from.index]);
+          if (linked) {
+            graphicsPass[pass.handle.index] = true;
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  auto selectQueue = [&](QueueType type) -> CommandQueue* {
+    if (type == QueueType::Graphics) {
+      return device.graphicsQueue();
+    }
+    if (type == QueueType::Compute) {
+      return device.computeQueue();
+    }
+    return device.copyQueue(0);
+  };
+
+  std::unordered_map<QueueType, std::unique_ptr<CommandBuffer>> queueBuffers;
+  queueBuffers.reserve(3);
+
+  for (const auto& pass : _passes) {
+    QueueType assignedQueue = QueueType::Graphics;
+    if (!graphicsPass[pass.handle.index] &&
+        (pass.preferredQueue == QueueType::Compute ||
+         pass.preferredQueue == QueueType::Transfer)) {
+      assignedQueue = pass.preferredQueue;
+    }
+
+    auto& cmd = queueBuffers[assignedQueue];
+    if (!cmd) {
+      CommandQueue* queue = selectQueue(assignedQueue);
+      if (!queue || !queue->commandBufferPool()) {
+        continue;
+      }
+      cmd = queue->commandBufferPool()->allocate();
+      if (cmd) {
+        cmd->setContext(&resources, &swapchain);
+      }
+    }
+
+    if (pass.recordFn) {
+      if (!cmd->isRecording()) {
+        cmd->beginCommandBuffer(_lastOptions.enableTimestamps);
+      }
+      pass.recordFn(*cmd);
+    }
+  }
+
+  std::vector<std::unique_ptr<CommandBuffer>> buffers;
+  std::vector<QueueType> queueTypes;
+  buffers.reserve(queueBuffers.size());
+  queueTypes.reserve(queueBuffers.size());
+
+  const std::array<QueueType, 3> queueOrder = {
+      QueueType::Graphics, QueueType::Compute, QueueType::Transfer};
+  for (QueueType queueType : queueOrder) {
+    auto it = queueBuffers.find(queueType);
+    if (it == queueBuffers.end() || !it->second) {
+      continue;
+    }
+    if (it->second->isRecording()) {
+      it->second->endCommandBuffer();
+    }
+    buffers.push_back(std::move(it->second));
+    queueTypes.push_back(queueType);
+  }
+  return ResolvedFrame(std::move(buffers), std::move(queueTypes));
 }
 
 }  // namespace reng
