@@ -44,7 +44,7 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
 
   build-and-test-macos:
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
