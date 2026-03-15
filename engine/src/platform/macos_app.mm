@@ -86,8 +86,9 @@
     return;
   }
 
+  const auto& resolvedBackend = _engine->backend();
   if (@available(macOS 14.0, *)) {
-    if (_desc.backend == reng::Backend::Metal) {
+    if (resolvedBackend == reng::Backend::Metal) {
       _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
       _displayLink.preferredFrameRateRange = CAFrameRateRangeMake(30, 60, 60);
       _displayLink.delegate = self;

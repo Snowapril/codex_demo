@@ -29,6 +29,8 @@ class Engine {
   BackendSwapchain* swapchain() { return _swapchain.get(); }
   const FrameTimings& lastFrameTimings() const { return _lastFrameTimings; }
 
+  reng_inline getAPIBackend() const { return _desc.backend; }
+
  private:
   Engine(const AppDesc& desc, AppCallbacks& callbacks);
   bool initBackend(const PlatformContext& context);
