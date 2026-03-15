@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <array>
 #include <vector>
 
 #include "reng/backend.h"
