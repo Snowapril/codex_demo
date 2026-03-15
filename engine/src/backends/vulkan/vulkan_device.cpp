@@ -351,28 +351,28 @@ bool VulkanDevice::initializeDevice() {
     transferFamily = graphicsFamily;
   }
 
-  _queueFamilies[static_cast<size_t>(QueueType::Graphics)] = graphicsFamily;
-  _queueFamilies[static_cast<size_t>(QueueType::Compute)] = computeFamily;
-  _queueFamilies[static_cast<size_t>(QueueType::Transfer)] = transferFamily;
+  _queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)] = graphicsFamily;
+  _queueFamilyIndices[static_cast<size_t>(QueueType::Compute)] = computeFamily;
+  _queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)] = transferFamily;
 
   uint32_t desiredCopyCount =
       _desc.copyQueueCount > 0 ? _desc.copyQueueCount : 1;
   uint32_t graphicsQueues =
-      props[this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)]]
+      props[_queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)]]
           .queueCount;
   uint32_t computeQueues =
-      props[this->_queueFamilies[static_cast<size_t>(QueueType::Compute)]]
+      props[_queueFamilyIndices[static_cast<size_t>(QueueType::Compute)]]
           .queueCount;
   uint32_t transferQueues =
-      props[this->_queueFamilies[static_cast<size_t>(QueueType::Transfer)]]
+      props[_queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)]]
           .queueCount;
 
   bool transferSharesGraphics =
-      this->_queueFamilies[static_cast<size_t>(QueueType::Transfer)] ==
-      this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+      _queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)] ==
+      _queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)];
   bool computeSharesGraphics =
-      this->_queueFamilies[static_cast<size_t>(QueueType::Compute)] ==
-      this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+      _queueFamilyIndices[static_cast<size_t>(QueueType::Compute)] ==
+      _queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)];
 
   uint32_t copyCount = 0;
   uint32_t graphicsQueueCount = 1;
@@ -385,8 +385,8 @@ bool VulkanDevice::initializeDevice() {
     if (copyCount == 0) {
       RengLogger::logWarning(
           "No dedicated transfer queues available; using graphics queue");
-      this->_queueFamilies[static_cast<size_t>(QueueType::Transfer)] =
-          this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+      _queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)] =
+          _queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)];
       transferSharesGraphics = true;
       uint32_t maxCopy = graphicsQueues > 1 ? (graphicsQueues - 1) : 0;
       copyCount = (std::min)(desiredCopyCount, maxCopy);
@@ -395,8 +395,8 @@ bool VulkanDevice::initializeDevice() {
   }
 
   if (!computeSharesGraphics && computeQueues == 0) {
-    this->_queueFamilies[static_cast<size_t>(QueueType::Compute)] =
-        this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+    _queueFamilyIndices[static_cast<size_t>(QueueType::Compute)] =
+        _queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)];
     computeSharesGraphics = true;
   }
 
@@ -418,14 +418,14 @@ bool VulkanDevice::initializeDevice() {
     queueInfos.push_back(info);
   };
 
-  addQueueInfo(this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)],
+  addQueueInfo(_queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)],
                graphicsQueueCount);
   if (!computeSharesGraphics) {
-    addQueueInfo(this->_queueFamilies[static_cast<size_t>(QueueType::Compute)],
+    addQueueInfo(_queueFamilyIndices[static_cast<size_t>(QueueType::Compute)],
                  1);
   }
   if (!transferSharesGraphics) {
-    addQueueInfo(this->_queueFamilies[static_cast<size_t>(QueueType::Transfer)],
+    addQueueInfo(_queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)],
                  copyCount);
   }
 
@@ -472,12 +472,12 @@ bool VulkanDevice::initializeDevice() {
 
   VkQueue graphicsQueue = VK_NULL_HANDLE;
   vkGetDeviceQueue(
-      _device, this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)],
+      _device, _queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)],
       0, &graphicsQueue);
   _graphicsQueue = std::make_unique<VulkanCommandQueue>();
   _graphicsQueue->configure(
       graphicsQueue,
-      this->_queueFamilies[static_cast<size_t>(QueueType::Graphics)]);
+      _queueFamilyIndices[static_cast<size_t>(QueueType::Graphics)]);
   if (!_graphicsQueue->init(*this, QueueType::Graphics)) {
     RengLogger::logError("Failed to initialize Vulkan graphics queue");
     return false;
@@ -486,13 +486,13 @@ bool VulkanDevice::initializeDevice() {
   VkQueue computeQueueHandle = graphicsQueue;
   if (!computeSharesGraphics) {
     vkGetDeviceQueue(
-        _device, this->_queueFamilies[static_cast<size_t>(QueueType::Compute)],
+        _device, _queueFamilyIndices[static_cast<size_t>(QueueType::Compute)],
         0, &computeQueueHandle);
   }
   _computeQueue = std::make_unique<VulkanCommandQueue>();
   _computeQueue->configure(
       computeQueueHandle,
-      this->_queueFamilies[static_cast<size_t>(QueueType::Compute)]);
+      _queueFamilyIndices[static_cast<size_t>(QueueType::Compute)]);
   if (!_computeQueue->init(*this, QueueType::Compute)) {
     RengLogger::logError("Failed to initialize Vulkan compute queue");
   }
@@ -502,7 +502,7 @@ bool VulkanDevice::initializeDevice() {
     auto queue = std::make_unique<VulkanCommandQueue>();
     queue->configure(
         graphicsQueue,
-        this->_queueFamilies[static_cast<size_t>(QueueType::Transfer)]);
+        _queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)]);
     if (queue->init(*this, QueueType::Transfer)) {
       _copyQueues.push_back(std::move(queue));
     }
@@ -515,12 +515,12 @@ bool VulkanDevice::initializeDevice() {
     uint32_t queueIndex = transferSharesGraphics ? (i + 1) : i;
     vkGetDeviceQueue(
         _device,
-        this->_queueFamilies[static_cast<size_t>(QueueType::Transfer)],
+        _queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)],
         queueIndex, &copyQueue);
     auto queue = std::make_unique<VulkanCommandQueue>();
     queue->configure(
         copyQueue,
-        this->_queueFamilies[static_cast<size_t>(QueueType::Transfer)]);
+        _queueFamilyIndices[static_cast<size_t>(QueueType::Transfer)]);
     if (!queue->init(*this, QueueType::Transfer)) {
       RengLogger::logError("Failed to initialize Vulkan copy queue");
       continue;

@@ -46,7 +46,7 @@ class VulkanDevice : public BackendDevice {
   CommandQueue* copyQueue(size_t index) const override {
     return index < _copyQueues.size() ? _copyQueues[index].get() : nullptr;
   }
-  uint32_t graphicsQueueFamily() const { return _graphicsQueueFamily; }
+  uint32_t getQueueFamilyIndex(QueueType type) const { return _queueFamilyIndices[static_cast<size_t>(type)]; }
   double timestampPeriod() const { return _timestampPeriod; }
   uint32_t timestampValidBits() const { return _timestampValidBits; }
 
@@ -60,7 +60,7 @@ class VulkanDevice : public BackendDevice {
   VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
   VkDevice _device = VK_NULL_HANDLE;
   VkDebugUtilsMessengerEXT _debugMessenger = VK_NULL_HANDLE;
-  uint32_t _graphicsQueueFamily = 0;
+  std::array<uint32_t, static_cast<size_t>(QueueType::Transfer) + 1> _queueFamilyIndices{};
   uint32_t _timestampValidBits = 0;
   double _timestampPeriod = 0.0;
   std::unique_ptr<VulkanCommandQueue> _graphicsQueue;
