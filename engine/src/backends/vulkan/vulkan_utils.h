@@ -10,6 +10,7 @@ namespace reng::vulkan {
 
 bool check(VkResult result, const char* msg);
 VkFormat toVkFormat(PixelFormat format);
+PixelFormat fromVkFormat(VkFormat format);
 std::vector<const char*> gatherDeviceExtensions(VkPhysicalDevice device);
 std::vector<const char*> gatherValidationLayers();
 

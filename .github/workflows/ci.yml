@@ -5,16 +5,58 @@ on:
   pull_request:
 
 jobs:
-  build-and-test:
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  build-and-test-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Vulkan SDK (Windows)
+        env:
+          VULKAN_SDK_VERSION: 1.4.341.1
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdkUrl = "https://sdk.lunarg.com/sdk/download/$env:VULKAN_SDK_VERSION/windows/vulkan_sdk.exe"
+          $installer = "$env:RUNNER_TEMP\\vulkan_sdk.exe"
+          Invoke-WebRequest -Uri $sdkUrl -OutFile $installer
+          & $installer --accept-licenses --default-answer --confirm-command install
+          $sdkRoot = "C:\\VulkanSDK\\$env:VULKAN_SDK_VERSION"
+          if (-not (Test-Path $sdkRoot)) {
+            $sdkRoot = (Get-ChildItem -Path "C:\\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
+          }
+          if (-not (Test-Path $sdkRoot)) {
+            throw "Vulkan SDK not found after installation."
+          }
+          "VULKAN_SDK=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          "VK_LAYER_PATH=$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Configure
+        run: cmake -S . -B build -DRENG_ENABLE_VALIDATION=ON -DRENG_BUILD_TESTS=ON -DRENG_HEADLESS_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test (Windows)
+        env:
+          VK_LAYER_KHRONOS_validation: 1
+        run: ctest --test-dir build -C Release --output-on-failure
+
+  build-and-test-macos:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode 26
+        run: |
+          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode_26.0.app || sudo xcode-select -s /Applications/Xcode.app
+          xcodebuild -version
 
       - name: Install Vulkan SDK (macOS)
-        if: runner.os == 'macOS'
         env:
           VULKAN_SDK_VERSION: 1.4.341.1
         run: |
@@ -75,41 +117,13 @@ jobs:
           echo "DYLD_LIBRARY_PATH=${SDK_ROOT}/lib" >> "${GITHUB_ENV}"
           echo "VK_LAYER_PATH=${SDK_ROOT}/share/vulkan/explicit_layer.d" >> "${GITHUB_ENV}"
 
-      - name: Install Vulkan SDK (Windows)
-        if: runner.os == 'Windows'
-        env:
-          VULKAN_SDK_VERSION: 1.4.341.1
-        run: |
-          $ErrorActionPreference = "Stop"
-          $sdkUrl = "https://sdk.lunarg.com/sdk/download/$env:VULKAN_SDK_VERSION/windows/vulkan_sdk.exe"
-          $installer = "$env:RUNNER_TEMP\\vulkan_sdk.exe"
-          Invoke-WebRequest -Uri $sdkUrl -OutFile $installer
-          & $installer --accept-licenses --default-answer --confirm-command install
-          $sdkRoot = "C:\\VulkanSDK\\$env:VULKAN_SDK_VERSION"
-          if (-not (Test-Path $sdkRoot)) {
-            $sdkRoot = (Get-ChildItem -Path "C:\\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
-          }
-          if (-not (Test-Path $sdkRoot)) {
-            throw "Vulkan SDK not found after installation."
-          }
-          "VULKAN_SDK=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-          "VK_LAYER_PATH=$sdkRoot\\Bin" | Out-File -FilePath $env:GITHUB_ENV -Append
-
       - name: Configure
         run: cmake -S . -B build -DRENG_ENABLE_VALIDATION=ON -DRENG_BUILD_TESTS=ON -DRENG_HEADLESS_TESTS=ON
 
       - name: Build
-        run: cmake --build build --config Release
-
-      - name: Test (Windows)
-        if: runner.os == 'Windows'
-        env:
-          VK_LAYER_KHRONOS_validation: 1
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: cmake --build build
 
       - name: Test (macOS)
-        if: runner.os == 'macOS'
         env:
           MTL_DEBUG_LAYER: 1
           MTL_SHADER_VALIDATION: 1

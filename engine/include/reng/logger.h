@@ -21,31 +21,41 @@ class RengLogger {
   static void log(Level level, std::string_view message);
 
   template <typename... Args>
-  static void logVerbose(std::string_view format, Args&&... args) {
-    log(Level::Verbose,
-        formatMessage(format, std::forward<Args>(args)...));
+  static void logVerboseImpl(std::string_view file, int line,
+                             std::string_view format, Args&&... args) {
+    logWithLocation(Level::Verbose,
+                    formatMessage(format, std::forward<Args>(args)...),
+                    file, line);
   }
 
   template <typename... Args>
-  static void logInfo(std::string_view format, Args&&... args) {
-    log(Level::Info,
-        formatMessage(format, std::forward<Args>(args)...));
+  static void logInfoImpl(std::string_view file, int line,
+                          std::string_view format, Args&&... args) {
+    logWithLocation(Level::Info,
+                    formatMessage(format, std::forward<Args>(args)...),
+                    file, line);
   }
 
   template <typename... Args>
-  static void logWarning(std::string_view format, Args&&... args) {
-    log(Level::Warning,
-        formatMessage(format, std::forward<Args>(args)...));
+  static void logWarningImpl(std::string_view file, int line,
+                             std::string_view format, Args&&... args) {
+    logWithLocation(Level::Warning,
+                    formatMessage(format, std::forward<Args>(args)...),
+                    file, line);
   }
 
   template <typename... Args>
-  static void logError(std::string_view format, Args&&... args) {
-    log(Level::Error,
-        formatMessage(format, std::forward<Args>(args)...));
+  static void logErrorImpl(std::string_view file, int line,
+                           std::string_view format, Args&&... args) {
+    logWithLocation(Level::Error,
+                    formatMessage(format, std::forward<Args>(args)...),
+                    file, line);
   }
 
  private:
- static std::string formatMessage(std::string_view format);
+  static std::string formatMessage(std::string_view format);
+  static void logWithLocation(Level level, std::string_view message,
+                              std::string_view file, int line);
 
   template <typename... Args>
   static std::string formatMessage(std::string_view format, Args&&... args) {
@@ -60,3 +70,8 @@ class RengLogger {
 };
 
 }  // namespace reng
+
+#define logVerbose(...) logVerboseImpl(__FILE__, __LINE__, __VA_ARGS__)
+#define logInfo(...) logInfoImpl(__FILE__, __LINE__, __VA_ARGS__)
+#define logWarning(...) logWarningImpl(__FILE__, __LINE__, __VA_ARGS__)
+#define logError(...) logErrorImpl(__FILE__, __LINE__, __VA_ARGS__)

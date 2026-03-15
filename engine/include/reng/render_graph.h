@@ -4,18 +4,18 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <memory>
 #include <vector>
 
 #include "reng/command_buffer.h"
+#include "reng/queue_types.h"
 #include "reng/resources.h"
 
 namespace reng {
 
-enum class QueueType : uint8_t {
-  Graphics,
-  Compute,
-  Transfer,
-};
+class BackendDevice;
+class BackendSwapchain;
+class ResourcePool;
 
 enum class PassType : uint8_t {
   Blit,
@@ -30,6 +30,7 @@ struct PassHandle {
 
 struct CompileOptions {
   bool enableAutoSync = true;
+  bool enableTimestamps = true;
 };
 
 struct DependencyEdge {
@@ -55,9 +56,9 @@ struct CompileReport {
 class BlitPassBuilder {
  public:
   explicit BlitPassBuilder(CommandBuffer& cmd) : _cmd(cmd) {}
-  void copyTexture(const std::string& src, const std::string& dst);
-  void uploadBuffer(const std::string& name, size_t bytes);
-  void uploadTexture(const std::string& name, size_t bytes);
+  void copyTexture(const ResourceId& src, const ResourceId& dst);
+  void uploadBuffer(const ResourceId& buffer, size_t bytes);
+  void uploadTexture(const ResourceId& texture, size_t bytes);
 
  private:
   CommandBuffer& _cmd;
@@ -94,11 +95,13 @@ class RenderGraph;
 
 class ResolvedFrame {
  public:
-  explicit ResolvedFrame(std::vector<CommandBuffer>&& buffers);
-  void execute();
+  explicit ResolvedFrame(std::vector<std::unique_ptr<CommandBuffer>>&& buffers,
+                         std::vector<QueueType>&& queueTypes);
+  std::vector<CommandBufferTiming> execute();
 
  private:
-  std::vector<CommandBuffer> _buffers;
+  std::vector<std::unique_ptr<CommandBuffer>> _buffers;
+  std::vector<QueueType> _queueTypes;
 };
 
 class RenderGraph {
@@ -111,7 +114,7 @@ class RenderGraph {
                          const std::function<void(BlitPassBuilder&)>& record);
 
   PassHandle addRenderPass(
-      const std::string& name, const std::string& framebufferName,
+      const std::string& name, const FramebufferDesc& framebuffer,
       const std::vector<ResourceAccess>& accesses, QueueType preferredQueue,
       const std::function<void(RenderPassBuilder&)>& record);
 
@@ -126,7 +129,9 @@ class RenderGraph {
                        const std::function<void(MLPassBuilder&)>& record);
 
   CompileReport compile(const CompileOptions& options = {});
-  ResolvedFrame resolve();
+  ResolvedFrame resolve(BackendDevice& device,
+                        ResourcePool& resources,
+                        BackendSwapchain& swapchain);
 
  private:
   struct PassDesc {
@@ -135,11 +140,13 @@ class RenderGraph {
     PassType type;
     QueueType preferredQueue;
     std::vector<ResourceAccess> accesses;
+    FramebufferDesc framebuffer;
     std::function<void(CommandBuffer&)> recordFn;
   };
 
   std::vector<PassDesc> _passes;
-  CompileReport _lastReport;
+ CompileReport _lastReport;
+  CompileOptions _lastOptions;
 };
 
 }  // namespace reng

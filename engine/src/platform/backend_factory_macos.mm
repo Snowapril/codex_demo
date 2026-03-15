@@ -4,10 +4,12 @@
 #include "reng/logger.h"
 
 #include "backends/metal/metal_device.h"
+#include "backends/metal/metal_resources.h"
 #include "backends/metal/metal_swapchain.h"
 
 #if defined(RENG_ENABLE_VULKAN)
 #include "backends/vulkan/vulkan_device.h"
+#include "backends/vulkan/vulkan_resources.h"
 #include "backends/vulkan/vulkan_swapchain.h"
 #endif
 
@@ -21,22 +23,32 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
   }
 
   if (desc.backend == Backend::Metal) {
+    RengLogger::logInfo("macOS backend: Metal selected");
     CAMetalLayer* layer =
         (__bridge CAMetalLayer*)context.macos.metalLayer;
     if (!layer) {
       RengLogger::logError("Missing CAMetalLayer for Metal backend");
       return bundle;
     }
-    auto device = std::make_unique<MetalDevice>();
-    auto swapchain =
-        std::make_unique<MetalSwapchain>(layer, *device, desc.swapchain);
+    auto device = std::make_unique<MetalDevice>(desc.device);
+    if (!device->isValid()) {
+      RengLogger::logError("Metal device unavailable");
+      return bundle;
+    }
+    auto swapchain = std::make_unique<MetalSwapchain>(
+        layer, *device,
+        static_cast<MetalCommandQueue*>(device->graphicsQueue()),
+        desc.swapchain);
+    auto resources = std::make_unique<MetalResources>();
     bundle.device = std::move(device);
     bundle.swapchain = std::move(swapchain);
+    bundle.resources = std::move(resources);
     return bundle;
   }
 
   if (desc.backend == Backend::Vulkan) {
 #if defined(RENG_ENABLE_VULKAN)
+    RengLogger::logInfo("macOS backend: Vulkan selected");
     CAMetalLayer* layer =
         (__bridge CAMetalLayer*)context.macos.metalLayer;
     if (!layer) {
@@ -44,18 +56,26 @@ BackendBundle createBackend(const AppDesc& desc, const PlatformContext& context)
       return bundle;
     }
     auto device = std::make_unique<VulkanDevice>(desc.title, desc.device);
+    RengLogger::logInfo("Initializing Vulkan device");
     if (!device->initDevice((__bridge void*)layer)) {
       RengLogger::logError("Failed to initialize Vulkan device");
       return bundle;
     }
+    RengLogger::logInfo("Vulkan device initialized");
     auto swapchain = std::make_unique<VulkanSwapchain>();
-    if (!swapchain->init(*device, desc.swapchain)) {
+    if (!swapchain->init(
+            *device,
+            static_cast<VulkanCommandQueue*>(device->graphicsQueue()),
+            desc.swapchain)) {
       RengLogger::logError("Failed to initialize Vulkan swapchain");
       device->shutdown();
       return bundle;
     }
+    RengLogger::logInfo("Vulkan swapchain initialized");
+    auto resources = std::make_unique<VulkanResources>();
     bundle.device = std::move(device);
     bundle.swapchain = std::move(swapchain);
+    bundle.resources = std::move(resources);
     return bundle;
 #else
     RengLogger::logError("Vulkan backend is disabled in this build");

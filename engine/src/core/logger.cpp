@@ -85,6 +85,17 @@ void RengLogger::log(Level level, std::string_view message) {
   writeLine(line);
 }
 
+void RengLogger::logWithLocation(Level level, std::string_view message,
+                                 std::string_view file, int line) {
+  std::string annotated(message);
+  annotated += " (";
+  annotated.append(file.data(), file.size());
+  annotated += ":";
+  annotated += std::to_string(line);
+  annotated += ")";
+  log(level, annotated);
+}
+
 std::string RengLogger::formatMessage(std::string_view format) {
   return std::string(format);
 }

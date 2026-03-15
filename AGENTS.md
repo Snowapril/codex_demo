@@ -1,12 +1,13 @@
 # Rendering Engine Plan (Reference)
 
 ## Summary
-- C++20 core + Objective‑C++ Metal backend.
+- C++20 core + Objective‑C++ Metal backend (Metal4 APIs, e.g. `MTL4CommandQueue`).
 - macOS (Apple Silicon only): Metal4 + Vulkan (via KosmicKrisp), iOS: Metal4 only, Windows: Vulkan only.
 - HLSL runtime compile via DXC: SPIR‑V for Vulkan, DXIL → Metal Shader Converter → metallib for Metal.
 - RenderGraph flow: **Build → Compile → Resolve → Execute**. Command buffers are created/recorded/executed from the graph.
 - Resource tracking and dependency analysis determine queue compatibility and required sync (auto‑inserted).
 - CI runs validation layers and headless smoke tests on Windows/macOS.
+  - macOS Metal tests run with `MTL_DEBUG_LAYER=1` set in the invocation environment.
 
 ## 1) Architecture & Repo Layout
 - `/engine/include` public API
@@ -133,6 +134,7 @@
 - Swapchain creation is backend‑owned; app provides width/height/pixel format and present mode.
 - macOS Vulkan uses KosmicKrisp: do not enable portability enumeration.
 - Runloop is centralized in Engine; callbacks: input → update frame → update render → render.
+- Engine parses command line args for backend/validation (for example `--backend=metal`, `--backend=vulkan`, `--validation`) so all executables share the same switch.
 
 ## 12) Logging
 - Use `RengLogger` (no `std::cerr`).

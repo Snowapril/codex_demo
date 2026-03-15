@@ -19,7 +19,7 @@ class SwapchainSmokeApp : public reng::AppCallbacks {
 };
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   using namespace reng;
   RengLogger::init("logs/tests_swapchain_smoke.log");
   RengLogger::logInfo("Starting swapchain smoke test");
@@ -41,7 +41,7 @@ int main() {
 #endif
 
   SwapchainSmokeApp app(3);
-  int result = runApp(desc, app);
+  int result = runApp(argc, argv, desc, app);
 
   if (result == 0) {
     RengLogger::logInfo("Swapchain smoke test passed");

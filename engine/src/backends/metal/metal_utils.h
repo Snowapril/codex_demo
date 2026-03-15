@@ -7,5 +7,6 @@
 namespace reng::metal {
 
 MTLPixelFormat toMetalFormat(PixelFormat format);
+PixelFormat fromMetalFormat(MTLPixelFormat format);
 
 }  // namespace reng::metal
