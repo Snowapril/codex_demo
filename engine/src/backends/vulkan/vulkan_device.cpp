@@ -269,9 +269,30 @@ bool VulkanDevice::initializeDevice() {
   }
   std::vector<VkPhysicalDevice> devices(count);
   vkEnumeratePhysicalDevices(_instance, &count, devices.data());
-  _physicalDevice = devices[0];
-  VkPhysicalDeviceProperties deviceProps{};
-  vkGetPhysicalDeviceProperties(_physicalDevice, &deviceProps);
+  
+  _physicalDevice = VK_NULL_HANDLE;
+  for ( const auto& device : devices) {
+    VkPhysicalDeviceProperties deviceProps;
+    vkGetPhysicalDeviceProperties(device, &deviceProps);
+    RengLogger::logInfo("Vulkan physical device: {} (API version {})",
+                         deviceProps.deviceName,
+                         VK_VERSION_MAJOR(deviceProps.apiVersion));
+    if (deviceProps.apiVersion < VK_API_VERSION_1_4) {
+      continue;
+    }
+
+    if ( deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+      _physicalDevice = device;
+      break;
+    }
+  }
+
+  // TODO : also check fall-back device support vulkan 1.4 features
+  if (_physicalDevice == VK_NULL_HANDLE) {
+      RengLogger::logWarning("No discrete GPU found, using first available device");
+      _physicalDevice = devices[0];
+  }
+
   _timestampPeriod = static_cast<double>(deviceProps.limits.timestampPeriod);
 
   uint32_t familyCount = 0;
