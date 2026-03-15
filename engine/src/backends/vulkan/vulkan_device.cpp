@@ -271,6 +271,7 @@ bool VulkanDevice::initializeDevice() {
   vkEnumeratePhysicalDevices(_instance, &count, devices.data());
   
   _physicalDevice = VK_NULL_HANDLE;
+  VkPhysicalDeviceProperties selectedProps{};
   for ( const auto& device : devices) {
     VkPhysicalDeviceProperties deviceProps;
     vkGetPhysicalDeviceProperties(device, &deviceProps);
@@ -283,6 +284,7 @@ bool VulkanDevice::initializeDevice() {
 
     if ( deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
       _physicalDevice = device;
+      selectedProps = deviceProps;
       break;
     }
   }
@@ -293,7 +295,11 @@ bool VulkanDevice::initializeDevice() {
       _physicalDevice = devices[0];
   }
 
-  _timestampPeriod = static_cast<double>(deviceProps.limits.timestampPeriod);
+  if (_physicalDevice != VK_NULL_HANDLE) {
+    vkGetPhysicalDeviceProperties(_physicalDevice, &selectedProps);
+    _timestampPeriod =
+        static_cast<double>(selectedProps.limits.timestampPeriod);
+  }
 
   uint32_t familyCount = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &familyCount,
@@ -302,34 +308,122 @@ bool VulkanDevice::initializeDevice() {
   vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &familyCount,
                                            props.data());
 
-  bool found = false;
+  // Pick a queue family that supports graphics and present (ideally the same one for simplicity) for graphics queue family.
+  // If multiple queues are available in the same family, we will use them for copy queues. If no separate copy queue family is available, copy queues will share the graphics queue family.
+  // Also check compute only queue family for async compute if available, but if no separate compute queue is available, compute will share the graphics queue family as well.
+  const uint32_t kInvalidFamily = UINT32_MAX;
+  uint32_t graphicsFamily = kInvalidFamily;
+  uint32_t computeFamily = kInvalidFamily;
+  uint32_t transferFamily = kInvalidFamily;
+
   for (uint32_t i = 0; i < familyCount; ++i) {
     VkBool32 presentSupport = VK_FALSE;
     vkGetPhysicalDeviceSurfaceSupportKHR(_physicalDevice, i, _surface,
                                          &presentSupport);
-    if ((props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport) {
-      _graphicsQueueFamily = i;
+    const VkQueueFlags flags = props[i].queueFlags;
+    const bool hasGraphics = (flags & VK_QUEUE_GRAPHICS_BIT) != 0;
+    const bool hasCompute = (flags & VK_QUEUE_COMPUTE_BIT) != 0;
+    const bool hasTransfer = (flags & VK_QUEUE_TRANSFER_BIT) != 0;
+
+    if (graphicsFamily == kInvalidFamily && hasGraphics && presentSupport) {
+      graphicsFamily = i;
       _timestampValidBits = props[i].timestampValidBits;
-      found = true;
-      break;
+    }
+    if (computeFamily == kInvalidFamily && hasCompute && !hasGraphics) {
+      computeFamily = i;
+    }
+    if (transferFamily == kInvalidFamily && hasTransfer && !hasGraphics &&
+        !hasCompute) {
+      transferFamily = i;
     }
   }
-  if (!found) {
+
+  if (graphicsFamily == kInvalidFamily) {
     RengLogger::logError("No graphics+present queue found");
     shutdown();
     return false;
   }
 
-  uint32_t desiredCopyCount = _desc.copyQueueCount > 0 ? _desc.copyQueueCount : 1;
-  uint32_t availableQueues = props[_graphicsQueueFamily].queueCount;
-  uint32_t queueCount =
-      (std::min)(availableQueues, 1u + desiredCopyCount);
-  std::vector<float> priorities(queueCount, 1.0f);
+  if (computeFamily == kInvalidFamily) {
+    computeFamily = graphicsFamily;
+  }
+  if (transferFamily == kInvalidFamily) {
+    transferFamily = graphicsFamily;
+  }
 
-  VkDeviceQueueCreateInfo queueInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
-  queueInfo.queueFamilyIndex = _graphicsQueueFamily;
-  queueInfo.queueCount = queueCount;
-  queueInfo.pQueuePriorities = priorities.data();
+  _queueFamilies[static_cast<size_t>(QueueType::Graphics)] = graphicsFamily;
+  _queueFamilies[static_cast<size_t>(QueueType::Compute)] = computeFamily;
+  _queueFamilies[static_cast<size_t>(QueueType::Transfer)] = transferFamily;
+
+  uint32_t desiredCopyCount =
+      _desc.copyQueueCount > 0 ? _desc.copyQueueCount : 1;
+  uint32_t graphicsQueues =
+      props[_queueFamilies[static_cast<size_t>(QueueType::Graphics)]].queueCount;
+  uint32_t computeQueues =
+      props[_queueFamilies[static_cast<size_t>(QueueType::Compute)]].queueCount;
+  uint32_t transferQueues =
+      props[_queueFamilies[static_cast<size_t>(QueueType::Transfer)]].queueCount;
+
+  bool transferSharesGraphics =
+      _queueFamilies[static_cast<size_t>(QueueType::Transfer)] ==
+      _queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+  bool computeSharesGraphics =
+      _queueFamilies[static_cast<size_t>(QueueType::Compute)] ==
+      _queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+
+  uint32_t copyCount = 0;
+  uint32_t graphicsQueueCount = 1;
+  if (transferSharesGraphics) {
+    uint32_t maxCopy = graphicsQueues > 1 ? (graphicsQueues - 1) : 0;
+    copyCount = (std::min)(desiredCopyCount, maxCopy);
+    graphicsQueueCount = 1 + copyCount;
+  } else {
+    copyCount = (std::min)(desiredCopyCount, transferQueues);
+    if (copyCount == 0) {
+      RengLogger::logWarning(
+          "No dedicated transfer queues available; using graphics queue");
+      _queueFamilies[static_cast<size_t>(QueueType::Transfer)] =
+          _queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+      transferSharesGraphics = true;
+      uint32_t maxCopy = graphicsQueues > 1 ? (graphicsQueues - 1) : 0;
+      copyCount = (std::min)(desiredCopyCount, maxCopy);
+      graphicsQueueCount = 1 + copyCount;
+    }
+  }
+
+  if (!computeSharesGraphics && computeQueues == 0) {
+    _queueFamilies[static_cast<size_t>(QueueType::Compute)] =
+        _queueFamilies[static_cast<size_t>(QueueType::Graphics)];
+    computeSharesGraphics = true;
+  }
+
+  std::vector<VkDeviceQueueCreateInfo> queueInfos;
+  std::vector<std::vector<float>> queuePriorities;
+  queueInfos.reserve(3);
+  queuePriorities.reserve(3);
+
+  auto addQueueInfo = [&](uint32_t familyIndex, uint32_t count) {
+    if (count == 0) {
+      return;
+    }
+    queuePriorities.emplace_back(count, 1.0f);
+    VkDeviceQueueCreateInfo info{
+        VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+    info.queueFamilyIndex = familyIndex;
+    info.queueCount = count;
+    info.pQueuePriorities = queuePriorities.back().data();
+    queueInfos.push_back(info);
+  };
+
+  addQueueInfo(_queueFamilies[static_cast<size_t>(QueueType::Graphics)],
+               graphicsQueueCount);
+  if (!computeSharesGraphics) {
+    addQueueInfo(_queueFamilies[static_cast<size_t>(QueueType::Compute)], 1);
+  }
+  if (!transferSharesGraphics) {
+    addQueueInfo(_queueFamilies[static_cast<size_t>(QueueType::Transfer)],
+                 copyCount);
+  }
 
   std::vector<const char*> deviceExtensions =
       vulkan::gatherDeviceExtensions(_physicalDevice);
@@ -358,8 +452,9 @@ bool VulkanDevice::initializeDevice() {
 
   VkDeviceCreateInfo deviceInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
   deviceInfo.pNext = &dynamicFeatures;
-  deviceInfo.queueCreateInfoCount = 1;
-  deviceInfo.pQueueCreateInfos = &queueInfo;
+  deviceInfo.queueCreateInfoCount =
+      static_cast<uint32_t>(queueInfos.size());
+  deviceInfo.pQueueCreateInfos = queueInfos.data();
   deviceInfo.enabledExtensionCount =
       static_cast<uint32_t>(deviceExtensions.size());
   deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -372,25 +467,34 @@ bool VulkanDevice::initializeDevice() {
   }
 
   VkQueue graphicsQueue = VK_NULL_HANDLE;
-  vkGetDeviceQueue(_device, _graphicsQueueFamily, 0, &graphicsQueue);
+  vkGetDeviceQueue(
+      _device, _queueFamilies[static_cast<size_t>(QueueType::Graphics)], 0,
+      &graphicsQueue);
   _graphicsQueue = std::make_unique<VulkanCommandQueue>();
-  _graphicsQueue->configure(graphicsQueue, _graphicsQueueFamily);
+  _graphicsQueue->configure(graphicsQueue, _queueFamilies[static_cast<size_t>(QueueType::Graphics)]);
   if (!_graphicsQueue->init(*this, QueueType::Graphics)) {
     RengLogger::logError("Failed to initialize Vulkan graphics queue");
     return false;
   }
 
+  VkQueue computeQueueHandle = graphicsQueue;
+  if (!computeSharesGraphics) {
+    vkGetDeviceQueue(
+        _device, _queueFamilies[static_cast<size_t>(QueueType::Compute)], 0,
+        &computeQueueHandle);
+  }
   _computeQueue = std::make_unique<VulkanCommandQueue>();
-  _computeQueue->configure(graphicsQueue, _graphicsQueueFamily);
+  _computeQueue->configure(
+      computeQueueHandle,
+      _queueFamilies[static_cast<size_t>(QueueType::Compute)]);
   if (!_computeQueue->init(*this, QueueType::Compute)) {
     RengLogger::logError("Failed to initialize Vulkan compute queue");
   }
 
-  uint32_t copyCount = queueCount > 1 ? (queueCount - 1) : 0;
   if (copyCount == 0) {
     RengLogger::logWarning("Vulkan device provides a single queue; copy queues will share graphics queue");
     auto queue = std::make_unique<VulkanCommandQueue>();
-    queue->configure(graphicsQueue, _graphicsQueueFamily);
+    queue->configure(graphicsQueue, _queueFamilies[static_cast<size_t>(QueueType::Transfer)]);
     if (queue->init(*this, QueueType::Transfer)) {
       _copyQueues.push_back(std::move(queue));
     }
@@ -400,9 +504,12 @@ bool VulkanDevice::initializeDevice() {
   _copyQueues.reserve(copyCount);
   for (uint32_t i = 0; i < copyCount; ++i) {
     VkQueue copyQueue = VK_NULL_HANDLE;
-    vkGetDeviceQueue(_device, _graphicsQueueFamily, i + 1, &copyQueue);
+    uint32_t queueIndex = transferSharesGraphics ? (i + 1) : i;
+    vkGetDeviceQueue(
+        _device, _queueFamilies[static_cast<size_t>(QueueType::Transfer)],
+        queueIndex, &copyQueue);
     auto queue = std::make_unique<VulkanCommandQueue>();
-    queue->configure(copyQueue, _graphicsQueueFamily);
+    queue->configure(copyQueue, _queueFamilies[static_cast<size_t>(QueueType::Transfer)]);
     if (!queue->init(*this, QueueType::Transfer)) {
       RengLogger::logError("Failed to initialize Vulkan copy queue");
       continue;

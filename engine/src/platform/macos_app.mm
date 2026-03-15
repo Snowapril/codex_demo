@@ -86,7 +86,7 @@
     return;
   }
 
-  const auto& resolvedBackend = _engine->backend();
+  const auto resolvedBackend = _engine->getAPIBackend();
   if (@available(macOS 14.0, *)) {
     if (resolvedBackend == reng::Backend::Metal) {
       _displayLink = [[CAMetalDisplayLink alloc] initWithMetalLayer:_layer];
